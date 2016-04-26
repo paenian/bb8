@@ -1,4 +1,4 @@
-rad=125;
+rad=508/2;
 wall=10;
 
 triangle = 5;
@@ -13,8 +13,63 @@ m3_rad = 3/2+slop;
 m3_cap_rad = 3.25;
 m3_cap_height = 2;
 
+//rotate([0,0,-45]) rotate([45,0,0]) 
 
-!difference(){
+
+rotate() rhombioctahedron();
+
+module rhombioctahedron(){
+    //%cylinder(r=150, h=600, center=true);
+    %cube([200,200,600], center=true);
+    intersection(){
+        union(){
+            for(i=[0:45:359]) rotate([0,0,i]) 
+                translate([0,1,0]) square_face();
+            for(i=[45:45:179]) rotate([i,0,0]) 
+                translate([0,1,0]) square_face();
+            for(i=[225:45:359]) rotate([i,0,0]) 
+                translate([0,1,0]) square_face();
+            for(i=[45:90:359]) rotate([90,0,0]) rotate([0,0,i]) 
+                translate([0,1,0]) square_face();
+            
+            //triangles
+            for(i=[0:90:359]) rotate([0,0,i])
+                triangle_face();
+            for(i=[0:90:359]) mirror([0,0,1]) rotate([0,0,i])
+                triangle_face();
+        }
+        difference(){
+            sphere(r=rad);
+            sphere(r=rad-wall);
+        }
+    }
+}
+
+module square_face(){
+    face = rad;
+    intersection(){
+        rotate([-45/2,0,0]) translate([-face/2,0,0]) cube([face,face,face]);
+        rotate([-135/2,0,0]) translate([-face/2,0,0]) cube([face,face,face]);
+        rotate([0,90,0]) rotate([-45/2,0,0]) translate([-face/2,0,0]) cube([face,face,face]);
+        rotate([0,90,0]) rotate([-135/2,0,0]) translate([-face/2,0,0]) cube([face,face,face]);
+    }
+}
+
+module triangle_face(){
+    face = rad;
+    intersection(){
+        //%rotate([45,0,0]) square_face();
+        rotate([45,0,0]) rotate([0,0,-45]) square_face();
+        
+        //%rotate([0,0,-45]) square_face();
+        rotate([0,0,-45]) rotate([45,0,0]) square_face();
+        
+        //%rotate([0,0,-45-45]) rotate([45,0,0]) square_face();
+        rotate([0,0,-45-45]) rotate([45,0,0]) rotate([0,0,45]) square_face();
+    }
+}
+
+*difference(){
     rotate([116.565+5.1-slop,0,0]) dodecasphere();
     translate([0,0,-100]) cube([2000,2000,200], center=true);
 }
