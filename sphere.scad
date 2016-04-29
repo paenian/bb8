@@ -29,10 +29,13 @@ s=6.51;
 
 face = 19;
 
+washer_rad = 10.1/2+slop;
+washer_thick = 1.2;
+
 assembled = false;
 textured = false;
 
-%translate([0,rad-53,90]) rotate([0,0,45]) cube([180,180,180], center=true);
+//%translate([0,rad-53,90]) rotate([0,0,45]) cube([180,180,180], center=true);
 
 
 
@@ -149,6 +152,11 @@ module square_face(){
         //screwholes
         for(i=[0:90:359]) rotate([0,i,0])
             rotate([-22.5,0,0]) translate([0,rad-wall/2,-.1]) screwhole();
+        
+        //washer slots - two per face, in the corners.
+        for(k=[0,1]) for(j=[-1,1]) for(i=[0,1]) rotate([0,90*k,0]) rotate([0,90*j,0])mirror([i,0,0]) {
+            rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) cylinder(r=washer_rad, h=1, center=true);
+        }
     }
 }
 
@@ -182,6 +190,13 @@ module triangle_face(){
         rotate([0,0,-90])
         rotate([0,90,0])
         rotate([-22.5,0,0]) mirror([0,0,1]) translate([0,rad-wall/2,-.1]) screwhole();
+        
+        //washer slots in the triangles?  Probably shouldn't put them in.., then the triangles become the access holes?
+        for(i=[0,1]) rotate([0,0,-45]) rotate([45,0,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) cylinder(r=washer_rad, h=1, center=true);
+        
+        for(i=[0,1]) rotate([45,0,0]) rotate([0,-90,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) cylinder(r=washer_rad, h=1, center=true);
+            
+        for(i=[0,1]) rotate([0,-45,0]) rotate([0,0,-90]) rotate([0,90,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) cylinder(r=washer_rad, h=1, center=true);
     }
 }
 
