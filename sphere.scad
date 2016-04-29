@@ -100,7 +100,7 @@ module rhombioctahedron_face(face=0, textured=false){
         }
         
         if(textured==true){
-            scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep.stl");
+            scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep_simplified.stl");
         }else{
             sphere(r=rad, $fn=180);
         }
@@ -129,7 +129,7 @@ module rhombioctahedron(){
                 translate([1,1,1]) triangle_face();
         }
         
-        scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep.stl");
+        scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep_simplified.stl");
 
     }
 }
