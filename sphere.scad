@@ -25,12 +25,12 @@ m5_rad = 5/2+slop+.1;
 m5_cap_rad = 5.25;
 m5_cap_height = 3;
 
-s=6.51;
+
 
 face = 19;
 
 washer_rad = 10.1/2+slop;
-washer_thick = 1.2;
+washer_thick = 1.05;
 
 assembled = false;
 textured = false;
@@ -49,13 +49,35 @@ if(assembled == false){
 
 
 module screwhole(rad = m4_rad, nut_rad = m4_nut_rad){
-    angle=0;
+    angle=45;
     
-    cylinder(r=rad, h=wall, $fn=18);
-    translate([0,0,wall/2]) rotate([0,0,angle]) cylinder(r1=nut_rad, r2=nut_rad+1, h=wall*1.25, $fn=4);
-    translate([0,0,wall*1.5]) rotate([-15,0,0]) rotate([0,0,angle]) cylinder(r1=nut_rad+1, r2=nut_rad+2, h=wall*3, $fn=4);
+    inset = 4;
+    straight = 13;
+    flare = .75;
+    
+    translate([0,-1.5,0]){
+        cylinder(r=rad, h=wall, $fn=18);
+        translate([0,0,inset]) rotate([0,0,angle]) cylinder(r1=nut_rad, r2=nut_rad+flare, h=straight+1.4, $fn=4);
+        translate([0,0,straight+inset]) rotate([20,0,0]) rotate([0,0,angle]) cylinder(r1=nut_rad+flare, r2=nut_rad+2, h=wall*3, $fn=4);
+    }
 }
 
+
+module washer(){
+    cylinder(r=washer_rad, h=washer_thick, center=true);
+    hull(){
+        translate([0,0,washer_thick/2]) cylinder(r1=washer_rad*.75, r2=1, h=washer_thick/3);
+        rotate([180,0,0]) translate([0,0,washer_thick/2]) cylinder(r1=washer_rad*.75, r2=1, h=washer_thick/3);
+    }
+}
+
+//STL of the full BB8, centered, rotated, scaled, sized, etc.
+module bb8_texture(){
+    s=6.51;
+    //scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep_simplified.stl");
+    
+    scale([s,s,s]) import("body_solid.stl");
+}
 
 //rhombioctahedron();
 
@@ -65,9 +87,17 @@ module rhombioctahedron_printface(face=0, textured=false){
     
     //meridianal faces
     if(face > 7 && face <= 10)
-        rotate([22.5,0,0]) rotate([-(face-7)*45,0,0]) rhombioctahedron_face(face=face, textured=textured);
+        if(face == 8 || face == 10){
+            rotate([22.5,0,0]) rotate([0,90,0])  rotate([-(face-7)*45,0,0]) rhombioctahedron_face(face=face, textured=textured);
+        }else{
+            rotate([22.5,0,0]) rotate([-(face-7)*45,0,0]) rhombioctahedron_face(face=face, textured=textured);
+        }
     if(face > 10 && face <= 13)
-        rotate([22.5,0,0]) rotate([-(face-6)*45,0,0]) rhombioctahedron_face(face=face, textured=textured);
+        if(face == 11 || face == 13){
+            rotate([22.5,0,0]) rotate([0,90,0]) rotate([-(face-6)*45,0,0]) rhombioctahedron_face(face=face, textured=textured);
+        }else{
+            rotate([22.5,0,0]) rotate([-(face-6)*45,0,0]) rhombioctahedron_face(face=face, textured=textured);
+        }
     
     if(face > 13 && face <= 17)
         rotate([22.5,0,0]) rotate([0,0,-45-(face-13)*90]) rotate([-90,0,0]) rhombioctahedron_face(face=face, textured=textured);
@@ -103,7 +133,7 @@ module rhombioctahedron_face(face=0, textured=false){
         }
         
         if(textured==true){
-            scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep_simplified.stl");
+            bb8_texture();
         }else{
             sphere(r=rad, $fn=180);
         }
@@ -132,7 +162,7 @@ module rhombioctahedron(){
                 translate([1,1,1]) triangle_face();
         }
         
-        scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep_simplified.stl");
+        bb8_texture();
 
     }
 }
@@ -155,7 +185,7 @@ module square_face(){
         
         //washer slots - two per face, in the corners.
         for(k=[0,1]) for(j=[-1,1]) for(i=[0,1]) rotate([0,90*k,0]) rotate([0,90*j,0])mirror([i,0,0]) {
-            rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) cylinder(r=washer_rad, h=1, center=true);
+            rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) washer();
         }
     }
 }
@@ -192,11 +222,11 @@ module triangle_face(){
         rotate([-22.5,0,0]) mirror([0,0,1]) translate([0,rad-wall/2,-.1]) screwhole();
         
         //washer slots in the triangles?  Probably shouldn't put them in.., then the triangles become the access holes?
-        for(i=[0,1]) rotate([0,0,-45]) rotate([45,0,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) cylinder(r=washer_rad, h=1, center=true);
+        for(i=[0,1]) rotate([0,0,-45]) rotate([45,0,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) washer();
         
-        for(i=[0,1]) rotate([45,0,0]) rotate([0,-90,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) cylinder(r=washer_rad, h=1, center=true);
+        for(i=[0,1]) rotate([45,0,0]) rotate([0,-90,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) washer();
             
-        for(i=[0,1]) rotate([0,-45,0]) rotate([0,0,-90]) rotate([0,90,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) cylinder(r=washer_rad, h=1, center=true);
+        for(i=[0,1]) rotate([0,-45,0]) rotate([0,0,-90]) rotate([0,90,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,45/3]) translate([0,rad-wall/2,0]) rotate([90,0,0]) washer();
     }
 }
 
