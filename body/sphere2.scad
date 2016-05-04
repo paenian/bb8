@@ -13,47 +13,116 @@ m3_rad = 3/2+slop;
 m3_cap_rad = 3.25;
 m3_cap_height = 2;
 
-s=6.51;
+m4_nut_rad = 7*sqrt(2)/2+slop;
+m4_nut_height = 3;
+m4_rad = 4/2+slop+.1;
+m4_cap_rad = 4.25;
+m4_cap_height = 2;
 
-face = 18;
+m5_nut_rad = 8*sqrt(2)/2+slop;
+m5_nut_height = 3.5;
+m5_rad = 5/2+slop+.1;
+m5_cap_rad = 5.25;
+m5_cap_height = 3;
+
+
+
+face = 19;
+
+washer_rad = 10.1/2+slop;
+washer_thick = 1.05;
+washer_angle = 12;
 
 assembled = false;
+textured = false;
 
-//triangle_face();
+//%translate([0,rad-53,90]) rotate([0,0,45]) cube([180,180,180], center=true);
+
+
 
 if(assembled == false){
     //this is rotated for printing
-    rhombioctahedron_printface(face=face);
+    rhombioctahedron_printface(face=face, textured=textured);
 }else{
     //this is assembled as a sphere
-    rhombioctahedron_face(face=face);
+    rhombioctahedron_face(face=face, textured=textured);
 }
 
 
+module screwhole(rad = m4_rad, nut_rad = m4_nut_rad){
+    angle=45;
+    
+    inset = 5;
+    straight = 10;
+    flare = .75;
+    
+    translate([0,-1.5,0]){
+        translate([0,0,-.1]) cylinder(r=rad, h=wall, $fn=18);
+        translate([0,0,inset]) rotate([0,0,angle]) cylinder(r1=nut_rad, r2=nut_rad+flare, h=straight+1.4, $fn=4);
+        translate([0,0,straight+inset]) rotate([20,0,0]) rotate([0,0,angle]) cylinder(r1=nut_rad+flare, r2=nut_rad+2, h=wall*3, $fn=4);
+    }
+}
+
+module magnethole(rad = m4_rad, nut_rad = m4_nut_rad){
+    angle=45;
+    
+    inset = 1;
+    straight = 13;
+    flare = .75;
+    
+    translate([0,-1.5,0]){
+        translate([0,0,inset]) rotate([0,0,angle]) cylinder(r1=nut_rad, r2=nut_rad+flare, h=straight+1.4, $fn=4);
+    }
+}
+
+
+module washer(){
+    cylinder(r=washer_rad, h=washer_thick, center=true);
+    hull(){
+        translate([0,0,washer_thick/2]) cylinder(r1=washer_rad*.75, r2=1, h=washer_thick/3);
+        rotate([180,0,0]) translate([0,0,washer_thick/2]) cylinder(r1=washer_rad*.75, r2=1, h=washer_thick/3);
+    }
+}
+
+//STL of the full BB8, centered, rotated, scaled, sized, etc.
+module bb8_texture(){
+    s=6.51;
+    //scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep_simplified.stl");
+    
+    scale([s,s,s]) import("body_solid.stl");
+}
 
 //rhombioctahedron();
 
-module rhombioctahedron_printface(face=0){
+module rhombioctahedron_printface(face=0, textured=false){
     if(face >=0 && face <= 7)
-        rotate([22.5,0,0]) rotate([0,0,-45*face]) rhombioctahedron_face(face=face);
+        rotate([22.5,0,0]) rotate([0,0,-45*face]) rhombioctahedron_face(face=face, textured=textured);
     
     //meridianal faces
     if(face > 7 && face <= 10)
-        rotate([22.5,0,0]) rotate([-(face-7)*45,0,0]) rhombioctahedron_face(face=face);
+        if(face == 8 || face == 10){
+            rotate([22.5,0,0]) rotate([0,90,0])  rotate([-(face-7)*45,0,0]) rhombioctahedron_face(face=face, textured=textured);
+        }else{
+            rotate([22.5,0,0]) rotate([-(face-7)*45,0,0]) rhombioctahedron_face(face=face, textured=textured);
+        }
     if(face > 10 && face <= 13)
-        rotate([22.5,0,0]) rotate([-(face-6)*45,0,0]) rhombioctahedron_face(face=face);
+        if(face == 11 || face == 13){
+            rotate([22.5,0,0]) rotate([0,90,0]) rotate([-(face-6)*45,0,0]) rhombioctahedron_face(face=face, textured=textured);
+        }else{
+            rotate([22.5,0,0]) rotate([-(face-6)*45,0,0]) rhombioctahedron_face(face=face, textured=textured);
+        }
     
     if(face > 13 && face <= 17)
-        rotate([22.5,0,0]) rotate([0,0,-45-(face-13)*90]) rotate([-90,0,0]) rhombioctahedron_face(face=face);
+        rotate([22.5,0,0]) rotate([0,0,-45-(face-13)*90]) rotate([-90,0,0]) rhombioctahedron_face(face=face, textured=textured);
     
     //triangles
     if(face > 17 && face <= 21)
-        rotate([-22.5,0,0]) rotate([0,0,45]) rotate([0,0,-90*(face-18)]) rhombioctahedron_face(face=face);
+        rotate([-22.5,0,0]) rotate([0,0,45]) rotate([0,0,-90*(face-18)]) rhombioctahedron_face(face=face, textured=textured);
     if(face > 21 && face <= 25)
-        rotate([-22.5,0,0]) rotate([0,0,45]) mirror([0,0,1]) rotate([0,0,-90*(face-18)]) rhombioctahedron_face(face=face);
+        rotate([-22.5,0,0]) rotate([0,0,45]) mirror([0,0,1]) rotate([0,0,-90*(face-18)]) rhombioctahedron_face(face=face, textured=textured);
 }
 
-module rhombioctahedron_face(face=0){
+module rhombioctahedron_face(face=0, textured=false){
     intersection(){
         union(){
             //equatorial faces
@@ -76,7 +145,11 @@ module rhombioctahedron_face(face=0){
                 mirror([0,0,1]) rotate([0,0,90*(face-18)]) triangle_face();
         }
         
-        scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep.stl");
+        if(textured==true){
+            bb8_texture();
+        }else{
+            sphere(r=rad, $fn=180);
+        }
 
     }
 }
@@ -102,7 +175,7 @@ module rhombioctahedron(){
                 translate([1,1,1]) triangle_face();
         }
         
-        *scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep.stl");
+        bb8_texture();
 
     }
 }
@@ -116,7 +189,18 @@ module square_face(){
             rotate([0,90,0]) rotate([-45/2,0,0]) translate([-face/2,0,0]) cube([face,face,face]);
             rotate([0,90,0]) rotate([-135/2,0,0]) translate([-face/2,0,0]) cube([face,face,face]);
         }
-        sphere(r=rad-wall, $fn=90);
+        //hollow out the inside
+        sphere(r=rad-wall, $fn=180);
+        
+        //screwholes
+        /*for(i=[0:90:359]) rotate([0,i,0])
+            rotate([-22.5,0,0]) translate([0,rad-wall/2,-.1]) screwhole();
+        */
+        
+        //washer slots - two per face, in the corners.
+        for(k=[0,1]) for(j=[-1,1]) for(i=[0,1]) rotate([0,90*k,0]) rotate([0,90*j,0])mirror([i,0,0]) {
+            rotate([-22.5,0,0]) rotate([0,0,washer_angle]) translate([0,rad-wall/2,0]) screwhole(); //rotate([90,0,0]) washer();
+        }
     }
 }
 
@@ -133,7 +217,32 @@ module triangle_face(){
             rotate([0,0,-45-45]) rotate([45,0,0]) rotate([0,0,45]) 
                 rotate([0,90,0]) rotate([-135/2,0,0]) translate([-face/2,0,0]) cube([face,face,face]);
         }
-        sphere(r=rad-wall, $fn=90);
+        
+        //hollow out the inside
+        sphere(r=rad-wall, $fn=180);
+        
+        //screwholes
+        /*
+        rotate([0,0,-45])  
+        rotate([45,0,0])
+        rotate([-22.5,0,0]) translate([0,rad-wall/2,-.1]) screwhole();
+        
+        rotate([45,0,0])
+        rotate([0,-90,0])
+        rotate([-22.5,0,0]) mirror([0,0,1]) translate([0,rad-wall/2,-.1]) magnethole();
+        
+        rotate([0,-45,0])
+        rotate([0,0,-90])
+        rotate([0,90,0])
+        rotate([-22.5,0,0]) mirror([0,0,1]) translate([0,rad-wall/2,-.1]) magnethole();
+        */
+        
+        //washer slots in the triangles?  Probably shouldn't put them in.., then the triangles become the access holes?
+        for(i=[0,1]) rotate([0,0,-45]) rotate([45,0,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,washer_angle]) translate([0,rad-wall/2,0]) magnethole();  //rotate([90,0,0]) washer();
+        
+        for(i=[0,1]) rotate([45,0,0]) rotate([0,-90,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,washer_angle]) translate([0,rad-wall/2,0]) mirror([0,0,1]) magnethole();  //rotate([90,0,0]) washer();
+            
+        for(i=[0,1]) rotate([0,-45,0]) rotate([0,0,-90]) rotate([0,90,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,washer_angle]) translate([0,rad-wall/2,0]) mirror([0,0,1]) magnethole();  //rotate([90,0,0]) washer();
     }
 }
 
