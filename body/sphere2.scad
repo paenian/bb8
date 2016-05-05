@@ -27,11 +27,11 @@ m5_cap_height = 3;
 
 
 
-face = 19;
+face = 17;
 
 washer_rad = 10.1/2+slop;
 washer_thick = 1.05;
-washer_angle = 12;
+washer_angle = 9;
 
 assembled = false;
 textured = false;
