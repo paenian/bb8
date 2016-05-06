@@ -58,8 +58,12 @@ module screwhole(rad = m4_rad, nut_rad = m4_nut_rad){
     
     translate([0,-1.5,0]){
         translate([0,0,-.1]) cylinder(r=rad, h=wall, $fn=18);
-        translate([0,0,inset]) rotate([0,0,angle]) cylinder(r1=nut_rad, r2=nut_rad+flare, h=straight+1.4, $fn=4);
-        translate([0,0,straight+inset]) rotate([20,0,0]) rotate([0,0,angle]) cylinder(r1=nut_rad+flare, r2=nut_rad+2, h=wall*3, $fn=4);
+        translate([0,0,inset]) rotate([0,0,angle]) cylinder(r1=nut_rad, r2=nut_rad+flare, h=straight, $fn=4);
+        hull(){
+            translate([0,0,straight+inset]) rotate([0,0,angle]) cylinder(r=nut_rad+flare, h=.2, $fn=4, center=true);
+            translate([0,0,wall*2.5]) rotate([51,0,0]) translate([0,0,straight+inset]) rotate([0,0,angle]) cylinder(r=nut_rad+5, h=.2, $fn=4, center=true);
+        }
+        //translate([0,0,straight+inset-1]) rotate([30,0,0]) rotate([0,0,angle]) cylinder(r1=nut_rad+flare, r2=nut_rad+3, h=wall*3, $fn=4);
     }
 }
 
@@ -68,7 +72,7 @@ module magnethole(rad = m4_rad, nut_rad = m4_nut_rad){
     
     inset = 1;
     straight = 13;
-    flare = .75;
+    flare = .5;
     
     translate([0,-1.5,0]){
         translate([0,0,inset]) rotate([0,0,angle]) cylinder(r1=nut_rad, r2=nut_rad+flare, h=straight+1.4, $fn=4);
