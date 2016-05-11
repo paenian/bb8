@@ -1,12 +1,12 @@
 include <../configure.scad>
 include <arduino.scad>
 
-axle_rad = 180; //radius of the axle mounting points - how far the motors are from center.
+axle_rad = 175; //radius of the axle mounting points - how far the motors are from center.
 plate_rad = axle_rad+20;
 
 in = 25.4;
 
-wall = 5;
+//wall = 5;
 
 //150 rad gives 136mm below the center of the sphere
 //175 rad gives 102mm below the center of the sphere
@@ -25,7 +25,7 @@ motor_len = 33+26.5;
 
 //sphere bottom, for sizeing
 %translate([00,0,0]) intersection(){
-    translate([0,0,95]) difference(){
+    translate([0,0,104]) difference(){
         sphere(r=508/2);
         sphere(r=508/2-10, $fn=180);
     }
@@ -119,5 +119,13 @@ module motor_mount(height=25, screw_sep = 50){
 module battery(){
     //could probably fit two of these in...
     translate([0,0,-1.25*in]) cube([3.7*in, 5.9*in, 2.5*in], center=true);
+    
+    //FRC battery:
+    #translate([0,0,-1.5*in]) cube([7.1*in, 6.6*in, 3.0*in], center=true);
+    //http://www.andymark.com/product-p/am-0844.htm
+    //$89 for two batteries, $100 for the charger:
+    //
+    
+    %translate([0,0,-2*in]) cube([7*in, 7*in, 3.5*in], center=true);
  //http://www.amazon.com/ExpertPower-EXP1290-Volt-Rechargeable-battery/dp/B00A82A3QG/ref=sr_1_9?ie=UTF8&qid=1462559752&sr=8-9&keywords=12+battery
 }
