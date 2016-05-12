@@ -1,7 +1,11 @@
 /* I've got motors with a 4mm shaft, and wheels with a 12mm hole.
  *
  * The motors have flats, so I figure screw onto those, so nut trap.  Then friction fit the wheels?
-  * Should probably have a shoulder, 
+ * Should probably have a shoulder, 
+ *
+ * 
+ * This design is now obsolete - adding a proper axle for the wheels, because I'm worried about the force.  Hamster needs to be heavy, so let's do this right.
+ * 
  */
 
 motor_adapter();

@@ -3,6 +3,17 @@ wall=10;
 
 slop = .2;
 
+//wheel and axle variables
+wheel_bore_rad = 12/2;
+wheel_rad = 82/2;
+wheel_thick = 64;
+
+m4_bearing_rad = 9/2+slop;
+m4_bearing_height = 4;
+m4_bearing_race_rad = (9+4)/4;
+
+//motor variables
+
 //standard screw variables
 m3_nut_rad = 6.01/2+slop;
 m3_nut_height = 2.4;
