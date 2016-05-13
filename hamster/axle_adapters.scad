@@ -10,19 +10,27 @@ pulley_teeth = 23;
 
 $fn=64;
 
-module axle_adapter(drive = true, height = 25, inset = 5){
+module axle_adapter(drive = true, height = 22, inset = 5){
     wing_height = 5;
-    wing_extent = 10;
-    wing_thick = 3;
+    wing_extent = 25.4/2;
+    wing_thick = 4-slop;
     difference(){
         union(){
             cylinder(r=wheel_bore_rad, h=height);
             
             //wings
             for(i=[0:120:359]) translate([0,0,height-inset-wing_height]) rotate([0,0,i]) {
-                hull(){
-                    translate([wing_extent/2,0,wing_height/2]) cube([wing_extent, wing_thick, wing_height], center=true);
-                    translate([0,0,0]) cube([wheel_bore_rad*2-.5, wing_thick, wing_height], center=true);
+                intersection(){
+                    hull(){
+                        translate([wing_extent/2,0,wing_height/2]) cube([wing_extent, wing_thick, wing_height], center=true);
+                        translate([0,0,0]) cube([wheel_bore_rad*2-.5, wing_thick, wing_height], center=true);
+                    }
+                    
+                    //this slopes the top
+                    hull(){
+                        translate([0,0,-wing_height/2]) cylinder(r=wing_extent, h=1);
+                        translate([0,0,wing_height/2]) cylinder(r1=wing_extent, r2 = 10, h=1);
+                    }
                 }
             }
             
@@ -32,7 +40,7 @@ module axle_adapter(drive = true, height = 25, inset = 5){
             
             if(drive == true){
                 //pulley
-                pulley ( "GT2 2mm" , tooth_spacing (2,0.254, teeth=pulley_teeth) , 0.764 , 1.494, pulley_t_ht=10, pulley_b_ht=3, pulley_b_dia=20, teeth=pulley_teeth);
+                pulley ( "GT2 2mm" , tooth_spacing (2,0.254, teeth=pulley_teeth) , 0.764 , 1.494, pulley_t_ht=8, pulley_b_ht=3, pulley_b_dia=20, teeth=pulley_teeth);
             }
         }
         
