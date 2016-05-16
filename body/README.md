@@ -23,6 +23,11 @@ You'll need:
   - I ordered from from McMaster Carr: mcmaster.com
 - 48 1/4" by 1/4" by 1/2" magnets, magnetized along the long axis.
   - I ordered from K&J Magnetics: https://www.kjmagnetics.com/proddetail.asp?prod=B448
+  - UPDATE!
+  - Use 24 1/4" by 1/4" by 1/2" magnets
+  - And 24 3/16 by 1/2" cylindrical magnets, in the screwholes of the squares.
+    - That way the magnet distance is 1mm :-)
+
 - A SHORT ball-end hex key
   - I used just a right-angly guy; my T-handled was too long.
 
@@ -40,3 +45,4 @@ You'll need:
 - I'm printing up the shell now.
 - no planned updates.
 - The only question is how well the magnets can hold the triangles on.
+  - Tested.  Works better with cylindrical magnets forced into the screwholes.

@@ -18,8 +18,19 @@ Designed a motor adapter for motors I probably won't end up using.
 
 Progress here will be entwined with the electronics.  It'd be nice to have 'em mounted.
 
+UPDATE:
+- Motor mounts for 37mm motors are designed, along with motor arms to bolt them to.
+- Core is designed, albeit without any mounting for the batteries or electronics.
+  - If the plastic core isn't strong enough, I plan to replace it with aluminum plate.
+
+
 #TODO:
 - Platform - lasercut maybe?  Need a base to mount everything to.
   - ...and then mount stuff to the base.
+  - Going printed, although the core could certainly be lasercut at this complexity level.
+    - If I need the strength, I don't think MDF would be better than PET
+    - would replace the core with aluminum plate, probably.
 - Connectors for the motors
 - motor leveling.
+  - This is handled by having long motor arms, using the flexibility of the plastic as a spring.
+
