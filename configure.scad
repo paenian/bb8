@@ -5,8 +5,9 @@ slop = .2;
 
 //wheel and axle variables
 wheel_bore_rad = 12/2;
-wheel_rad = 82/2;
+wheel_rad = 84/2;
 wheel_thick = 64;
+wheel_clearance = 81;
 
 m4_bearing_rad = 9/2+slop;
 m4_bearing_height = 4;
