@@ -1,12 +1,13 @@
 include <../configure.scad>
 use <pulley.scad>
 
-axle_adapter(drive = true);
+!axle_adapter(drive = true);
 
 translate([0,0,50]) 
 axle_adapter(drive = false, height=15);
 
-pulley_teeth = 23;
+pulley_teeth = 41;
+pulley_base_rad = 27;
 
 $fn=64;
 
@@ -34,13 +35,9 @@ module axle_adapter(drive = true, height = 22, inset = 5){
                 }
             }
             
-   //         pulley_t_ht = 12;	// length of toothed part of pulley, standard = 12
-//pulley_b_ht = 0;		// pulley base height, standard = 8. Set to same as idler_ht if you want an idler but no pulley.
-//pulley_b_dia = 20;
-            
             if(drive == true){
                 //pulley
-                pulley ( "GT2 2mm" , tooth_spacing (2,0.254, teeth=pulley_teeth) , 0.764 , 1.494, pulley_t_ht=8, pulley_b_ht=3, pulley_b_dia=20, teeth=pulley_teeth);
+                pulley ( "GT2 2mm" , tooth_spacing (2,0.254, teeth=pulley_teeth) , 0.764 , 1.494, pulley_t_ht=8, pulley_b_ht=3, pulley_b_dia=pulley_base_rad, teeth=pulley_teeth);
             }
         }
         

@@ -47,7 +47,7 @@ nut_shaft_distance = 1.2;	// distance between inner face of nut and shaft, can b
 //	********************************
 /*	To improve fit of belt to pulley, set the following constant. Decrease or increase by 0.1mm at a time. We are modelling the *BELT* tooth here, not the tooth on the pulley. Increasing the number will *decrease* the pulley tooth size. Increasing the tooth width will also scale proportionately the tooth depth, to maintain the shape of the tooth, and increase how far into the pulley the tooth is indented. Can be negative */
 
-additional_tooth_width = 0.2; //mm
+additional_tooth_width = 0.25; //mm
 
 //	If you need more tooth depth than this provides, adjust the following constant. However, this will cause the shape of the tooth to change.
 
