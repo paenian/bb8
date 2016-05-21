@@ -64,7 +64,7 @@ void Motor::setSpeed(int speed){
 
 void Motor::setDirection(bool dir)
 {
-  if(dir){
+  if(dir==true){
     digitalWrite(_dirPin, LOW);
     digitalWrite(13, LOW);
   }else{
