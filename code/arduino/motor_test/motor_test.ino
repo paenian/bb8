@@ -110,7 +110,7 @@ int factor = 1200; // variable by which to divide gyroscope values, used to cont
 
 int calibrateOffsets = 1; // int to determine whether calibration takes place or not
 
-Motor motor = Motor(3, 2, A0);
+Motor motor = Motor(6, 7, A0);
 
 void setup() {
   // initialize Serial communication
