@@ -2,7 +2,7 @@ include <../configure.scad>
 
 motor_mount();
 $fn=72;
-module motor_mount(height=20, screw_sep = motor_mount_screw_sep, solid=1){
+module motor_mount(height=36, screw_sep = motor_mount_screw_sep, solid=1){
     wall = 5;
     clamp_height = 12;
     offset = 2;
@@ -50,7 +50,7 @@ module motor_mount(height=20, screw_sep = motor_mount_screw_sep, solid=1){
         translate([offset,motor_rad,0]) cube([wall/2, height*2, motor_rad*2], center=true);
         
         //clamp holes
-        translate([offset,motor_rad+clamp_height/2]){
+        for(i=[-1,1]) translate([offset,motor_rad+clamp_height/2,height/4*i]){
             rotate([0,90,0]) cylinder(r=m4_rad, h=height*2, center=true);
             rotate([0,90,0]) translate([0,0,wall]) cylinder(r1=m4_cap_rad, r2=m4_cap_rad+1, h=height);
             rotate([0,-90,0]) translate([0,0,wall]) cylinder(r1=m4_square_nut_rad, r2=m4_square_nut_rad+1, h=height, $fn=4);
