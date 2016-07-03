@@ -3,6 +3,8 @@ wall=10;
 
 slop = .2;
 
+in = 25.4;
+
 //wheel and axle variables
 wheel_bore_rad = 12/2;
 wheel_rad = 84/2;
@@ -12,6 +14,8 @@ wheel_clearance = 81;
 m4_bearing_rad = 9/2+slop;
 m4_bearing_height = 4;
 m4_bearing_race_rad = (9+4)/4;
+
+axle_rad = 8/2+slop;
 
 //motor variables
 motor_rad = 37/2;

@@ -5,17 +5,31 @@ in = 25.4;
 rad = 250;
 ring_rad = 150;         //the radius of the orange rings
 center_rad = 100;       //radius of the inside of the orange ring
-cap_rad = 125;          //radius of our cap
+
+cap_rad = 150;          //radius of our cap
 
 slice_wall = .25*in;
 
-cap(textured = false, printing=false, num_slices = 6);
+*cap(textured = false, printing=false, num_slices = 6);
 
 *print_slice(num_slices = 6);
 *thermo_slice(num_slices = 6);
-cap_slice(num_slices = 6);
+*cap_slice(num_slices = 6);
 
-$fn=30;
+%cylinder(r1=0, r2=150, h=250);
+
+$fn=30; //for rendering
+//$fn=120; //for printing
+
+part = 10;
+
+if(part == 10)
+    assembled(quick=true);
+
+module assembled(quick=true, num_slices=6){
+    for(i=[0,1]) mirror([0,0,i])
+        cap(textured=!quick, printing=false, num_slices=num_slices);
+}
 
 module thermo_slice(rad = rad-slice_wall-.1, num_slices = 6){
     hull(){
@@ -123,7 +137,7 @@ module cap(textured = false, printing = true, num_slices = 6){
         if(textured == true)
             bb8_texture();
         
-        rotate([0,0,360/(num_slices*2)]) cylinder(r=ring_rad, h=600, $fn=num_slices*2);
+        rotate([0,0,360/(num_slices*2)]) cylinder(r=ring_rad, h=600, $fn=num_slices);
     }
 }
 
