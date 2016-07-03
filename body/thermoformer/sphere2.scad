@@ -10,12 +10,24 @@ petal_attach_rad = cap_rad - wall;
 
 
 part = 10;
+angle = 30;
+textured = false;
 $fn=30;     //for rendering
 //$fn=120;    //for printing
 
-
 %cube([600,300,.1], center=true);
 %cube([200,200,1], center=true);
+
+if(part == 0)
+    cap(angle = angle, textured = textured);
+if(part == 1)
+    petal(angle = angle, textured = textured);
+if(part == 2)
+    bus();
+if(part == 3)
+    drive_motor();
+if(part == 4)
+    tilt_motor();
 
 if(part == 10)
     assembled();
@@ -39,21 +51,26 @@ echo(helix_angle);
 
 
 //Gear variables
-gear_drive_diameter = 60;
-gear_drive_teeth = 17;
-gear_motor_teeth = 11;
-gear_thick = 15;
+gear_drive_diameter = 80;
+gear_drive_teeth = 59;
+gear_motor_teeth = 29;
+gear_thick = 12;
 gear_clearance = .1;
 
-DR=0.5*1;   //this is the maximum depth ratio
+DR=0.6*1;   //this is the maximum depth ratio
 P = 45;
 nTwist = 1;
-gear_pitchD = 0.9*gear_drive_diameter/(1+min(PI/(2*gear_drive_teeth*tan(P)),PI*DR/gear_drive_teeth));
+gear_pitchD = gear_drive_diameter/(1+min(PI/(2*gear_drive_teeth*tan(P)),PI*DR/gear_drive_teeth));
 gear_pitch = gear_pitchD*PI/gear_drive_teeth;
 gear_pressure_angle = P;
 gear_depth_ratio = DR;
 gear_angle = atan(2*nTwist*gear_pitch/gear_thick);
 
+//head carriage variables
+head_width = 100;
+
+//bus variables
+bus_width= rad - cap_height - head_width;
 
 module assembled(){
     for(i=[0,1]) mirror([0,0,i])
@@ -61,18 +78,37 @@ module assembled(){
     
     for(i=[180/num_petals:360/num_petals:180-1])
         petal(angle=i, textured=false);
+    
+    for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-wall/2])
+        rotate([0,90,0]) motor_carrier();
+    
+    for(i=[0,1]) mirror([0,0,i]) translate([0,0,100])
+        rotate([0,90,0]) bus();
+}
+
+//mounts one or two motors, ready to drive BB8.
+module motor_carrier(){
+}
+
+//the bus holds the electronics, and everything else mounts to it - the drive motors, tilt motors and head motivator too.
+module bus(){
+    difference(){
+        union(){
+            cube([100,70,wall],center=true);
+        }
+    }
 }
 
 //the holes for the petals - all of them.
 module petal_holes(){
-    angle = 30;
-    hole_sep = 90;
+    angle = 29.2;
+    hole_sep = 15;
     
     for(i=[180/num_petals:360/num_petals:360-1]) rotate([0,0,i])
-        rotate([angle,0,0]) translate([0,0,rad-wall-2]) {
-            for(j=[-hole_sep/2, hole_sep/2]) translate([j,0,0]) {
-                cylinder(r=m4_rad, h=wall+4);
-                translate([0,0,wall-petal_thick+2]) cylinder(r1=m4_rad, r2=m4_rad+wall, h=wall);
+        rotate([angle,0,0]) {
+            for(j=[-hole_sep/2, hole_sep/2]) rotate([0,j,0]) translate([0,0,rad-wall*2]) {
+                cylinder(r=m4_rad, h=wall*3);
+                translate([0,0,wall*2-petal_thick]) cylinder(r1=m4_rad, r2=m4_rad+wall, h=wall);
             }
         }
 }
@@ -95,12 +131,12 @@ module petal(angle = 0, textured = false){
         }
         
         if(textured == true){
-            bb8_body();
+            bb8_texture();
         }
     }
 }
 
-module cap(textured = false){
+module cap(angle = 0, textured = false){
     difference(){
         union(){
             //cap exterior
@@ -114,7 +150,7 @@ module cap(textured = false){
                 union(){
                     cylinder(r=petal_attach_rad/cos(180/6), h=rad+1, $fn=num_petals);
                 
-                    //petal attachment ring
+                    //petal attachment indent
                     intersection(){
                         cylinder(r=cap_rad/cos(180/6), h=rad+1, $fn=num_petals);
                         sphere(r=rad-petal_thick);
@@ -123,7 +159,7 @@ module cap(textured = false){
                 
                 //texture it?
                 if(textured == true){
-                    bb8_body();
+                    rotate([angle,0,0]) bb8_texture();
                 }
             }
             
@@ -140,6 +176,7 @@ module cap(textured = false){
                 helix_angle=gear_angle,
                 gear_thickness=gear_thick,
                 flat=false);
+            %cylinder(r=gear_drive_diameter/2, h=gear_thick);
             
             //connect the gear to the sphere
             hull(){
@@ -152,9 +189,17 @@ module cap(textured = false){
         translate([0,0,-1]) cylinder(r=axle_rad, h=cap_height-wall+1);
         
         //holes to attach the petals
-        translate([0,0,-rad+cap_height]) rotate([0,0,180/num_petals]) petal_holes();
+        translate([0,0,-rad+cap_height]) rotate([0,0,180/num_petals]) petal_holes(m4_rad = m4_tap_rad);
         
         //flatten the bottom for easy printing
         translate([0,0,-rad]) cube([rad*2, rad*2, rad*2], center=true);
     }
+}
+
+//STL of the full BB8, centered, rotated, scaled, sized, etc.
+module bb8_texture(){
+    s=6.51;
+    //scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep_simplified.stl");
+
+    scale([s,s,s]) import("body_solid.stl");
 }

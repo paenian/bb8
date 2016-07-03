@@ -15,7 +15,7 @@ m4_bearing_rad = 9/2+slop;
 m4_bearing_height = 4;
 m4_bearing_race_rad = (9+4)/4;
 
-axle_rad = 8/2+slop;
+axle_rad = 10/2+slop;
 
 //motor variables
 motor_rad = 37/2;
@@ -34,6 +34,7 @@ m4_rad = 4/2+slop+.1;
 m4_cap_rad = 4.25;
 m4_cap_height = 2;
 m4_square_nut_rad = 11.0/2;
+m4_tap_rad = 4/2-slop;
 
 m5_nut_rad = 8*sqrt(2)/2+slop;
 m5_nut_height = 3.5;
