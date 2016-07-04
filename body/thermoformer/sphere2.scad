@@ -1,5 +1,6 @@
 include <../../configure.scad>
 use <bearing.scad>
+use <motor_mount.scad>
 
 cap_rad = rad/2;
 cap_height = 45;
@@ -9,7 +10,7 @@ petal_thick = 3;
 petal_attach_rad = cap_rad - wall;
 
 
-part = 10;
+part = 3;
 angle = 30;
 textured = false;
 $fn=30;     //for rendering
@@ -25,7 +26,7 @@ if(part == 1)
 if(part == 2)
     bus();
 if(part == 3)
-    drive_motor();
+    motor_carrier();
 if(part == 4)
     tilt_motor();
 
@@ -66,6 +67,8 @@ gear_pressure_angle = P;
 gear_depth_ratio = DR;
 gear_angle = atan(2*nTwist*gear_pitch/gear_thick);
 
+gear_motor_diameter = 36;
+
 //head carriage variables
 head_width = 100;
 
@@ -80,15 +83,30 @@ module assembled(){
         petal(angle=i, textured=false);
     
     for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-wall/2])
-        rotate([0,90,0]) motor_carrier();
+        motor_carrier();
+    
+    for(i=[0,1]) mirror([0,0,i]) translate([gear_motor_diameter/2+gear_drive_diameter/2,0,rad-cap_height])
+        motor_gear();
     
     for(i=[0,1]) mirror([0,0,i]) translate([0,0,100])
         rotate([0,90,0]) bus();
 }
 
-//mounts one or two motors, ready to drive BB8.
-module motor_carrier(){
+module motor_gear(){
+    //herringbone drive gear]
+    translate([0,0,gear_thick/2])
+    mirror([0,1,0]) herringbone (
+        number_of_teeth=gear_motor_teeth,
+        circular_pitch=gear_pitch,
+        pressure_angle=gear_pressure_angle,
+        depth_ratio=gear_depth_ratio,
+        clearance=gear_clearance,
+        helix_angle=gear_angle,
+        gear_thickness=gear_thick,
+        flat=false);
 }
+
+
 
 //the bus holds the electronics, and everything else mounts to it - the drive motors, tilt motors and head motivator too.
 module bus(){
@@ -97,6 +115,59 @@ module bus(){
             cube([100,70,wall],center=true);
         }
     }
+}
+
+//mounts one or two motors, ready to drive BB8.
+module motor_carrier(){   
+    thick = 15;
+    screw_sep=15;
+    
+    motor_offset = gear_drive_diameter/2+gear_motor_diameter/2;
+    motor_angle = 21;
+    
+    translate([0,0,-thick])
+    difference(){
+        union(){
+            for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,thick/2])
+                rotate([0,0,-90]) motor_mount(height = thick, solid=0, screw_sep=screw_sep);
+            
+            hull() for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,thick/2])
+            for(j=[-screw_sep/2,screw_sep/2]) translate([-motor_rad,j,0]) rotate([0,-90,0]) scale([1,.5,1]) rotate([0,0,22.5]) cylinder(r=thick/2/cos(180/8), h=motor_offset-motor_rad, $fn=8);
+            
+        
+            translate([0,0,thick/2]) rotate([0,0,90]) rotate([0,180,0]) motor_mount(height = thick, solid=0, motor_rad=22/2+slop, screw_sep=screw_sep);
+            
+            *hull() for(i=[-screw_sep/2,screw_sep/2]) translate([motor_offset/2,i,thick/2]) rotate([0,90,0]) scale([1,.5,1]) rotate([0,0,22.5]) cylinder(r=thick/2/cos(180/8), h=20, $fn=8, center=true);
+            
+            *hull(){
+                #cylinder(r=22/2+5, h=thick);
+                translate([motor_offset-motor_rad,0,thick/2]) cube([.1,wall,thick], center=true);
+            }
+        }
+        
+        //attachment for the bus
+        for(i=[-screw_sep/2,screw_sep/2]) translate([motor_offset/2,i,thick/2]){
+            cylinder(r=m4_rad, h=50, center=true);
+            cylinder(r=m4_cap_rad, h=50);
+        }
+        
+        //mount two flanged bearings
+        cylinder(r=22/2+slop, h=thick*3, center=true);
+    }
+}
+
+module motor_gear(){
+    //herringbone drive gear]
+    translate([0,0,gear_thick/2])
+    mirror([0,1,0]) herringbone (
+        number_of_teeth=gear_motor_teeth,
+        circular_pitch=gear_pitch,
+        pressure_angle=gear_pressure_angle,
+        depth_ratio=gear_depth_ratio,
+        clearance=gear_clearance,
+        helix_angle=gear_angle,
+        gear_thickness=gear_thick,
+        flat=false);
 }
 
 //the holes for the petals - all of them.
