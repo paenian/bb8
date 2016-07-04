@@ -10,7 +10,7 @@ petal_thick = 3;
 petal_attach_rad = cap_rad - wall;
 
 
-part = 3;
+part = 10;
 angle = 30;
 textured = false;
 $fn=30;     //for rendering
@@ -52,9 +52,9 @@ echo(helix_angle);
 
 
 //Gear variables
-gear_drive_diameter = 80;
-gear_drive_teeth = 59;
-gear_motor_teeth = 29;
+gear_drive_diameter = 100;
+gear_drive_teeth = 67;
+gear_motor_teeth = 31;
 gear_thick = 12;
 gear_clearance = .1;
 
@@ -67,7 +67,7 @@ gear_pressure_angle = P;
 gear_depth_ratio = DR;
 gear_angle = atan(2*nTwist*gear_pitch/gear_thick);
 
-gear_motor_diameter = 36;
+gear_motor_diameter = 45;
 
 //head carriage variables
 head_width = 100;
@@ -85,7 +85,7 @@ module assembled(){
     for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-wall/2])
         motor_carrier();
     
-    for(i=[0,1]) mirror([0,0,i]) translate([gear_motor_diameter/2+gear_drive_diameter/2,0,rad-cap_height])
+    *for(i=[0,1]) mirror([0,0,i]) translate([gear_motor_diameter/2+gear_drive_diameter/2,0,rad-cap_height])
         motor_gear();
     
     for(i=[0,1]) mirror([0,0,i]) translate([0,0,100])
@@ -123,7 +123,9 @@ module motor_carrier(){
     screw_sep=15;
     
     motor_offset = gear_drive_diameter/2+gear_motor_diameter/2;
-    motor_angle = 21;
+    motor_angle = 23;
+    
+    %for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,thick/2])motor_gear();
     
     translate([0,0,-thick])
     difference(){
@@ -251,7 +253,7 @@ module cap(angle = 0, textured = false){
             
             //connect the gear to the sphere
             hull(){
-                translate([0,0,gear_thick]) cylinder(r=gear_drive_diameter/3, h=.1);
+                translate([0,0,gear_thick]) cylinder(r=gear_drive_diameter/2, h=.1);
                 translate([0,0,cap_height-wall+1]) cylinder(r=gear_drive_diameter*.75, h=.1);
             }
         }
@@ -261,6 +263,20 @@ module cap(angle = 0, textured = false){
         
         //holes to attach the petals
         translate([0,0,-rad+cap_height]) rotate([0,0,180/num_petals]) petal_holes(m4_rad = m4_tap_rad);
+        
+        //hollow out the insides
+        difference(){
+            intersection(){
+                translate([0,0,-1]) cylinder(r=gear_drive_diameter/2-wall, h=100);
+                translate([0,0,-rad+cap_height]) sphere(r=rad-wall);
+            }
+            
+            //center rod
+            cylinder(r=axle_rad+wall/2, h=50);
+            
+            //stiffeners
+            for(i=[0:360/num_petals:359]) rotate([0,0,i]) translate([-1,0,0]) cube([2,100,100]);
+        }
         
         //flatten the bottom for easy printing
         translate([0,0,-rad]) cube([rad*2, rad*2, rad*2], center=true);
