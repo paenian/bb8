@@ -13,6 +13,7 @@ petal_attach_rad = cap_rad - wall;
 part = 10;
 angle = 30;
 textured = false;
+mirror = 0;
 $fn=30;     //for rendering
 //$fn=120;    //for printing
 
@@ -28,7 +29,7 @@ if(part == 2)
 if(part == 3)
     motor_carrier();
 if(part == 4)
-    tilt_motor();
+    motor_gear();
 
 if(part == 10)
     assembled();
@@ -53,6 +54,7 @@ echo(helix_angle);
 
 //Gear variables
 gear_drive_diameter = 100;
+gear_drive_rad = gear_drive_diameter/2;
 gear_drive_teeth = 67;
 gear_motor_teeth = 31;
 gear_thick = 12;
@@ -68,12 +70,28 @@ gear_depth_ratio = DR;
 gear_angle = atan(2*nTwist*gear_pitch/gear_thick);
 
 gear_motor_diameter = 45;
+gear_motor_rad = gear_motor_diameter/2;
 
 //head carriage variables
 head_width = 100;
 
 //bus variables
-bus_width= rad - cap_height - head_width;
+motor_carrier_thick = 15;
+motor_carrier_inset = 10;
+motor_carrier_width = 100;
+bus_width = 70; //the width of the dagu 4 motor shield, basically.
+bus_length= rad - cap_height - head_width;
+bus_drop = 40;
+bus_screw_sep = 20;
+
+//the bus holds the electronics, and everything else mounts to it - the drive motors, tilt motors and head motivator too.
+module bus(){
+    difference(){
+        union(){
+            translate([0,-bus_width/2,-wall/2]) cube([bus_length,bus_width,wall]);
+        }
+    }
+}
 
 module assembled(){
     for(i=[0,1]) mirror([0,0,i])
@@ -82,94 +100,111 @@ module assembled(){
     for(i=[180/num_petals:360/num_petals:180-1])
         petal(angle=i, textured=false);
     
-    for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-wall/2])
-        motor_carrier();
-    
+    //this is shown by the motor carrier anyways
     *for(i=[0,1]) mirror([0,0,i]) translate([gear_motor_diameter/2+gear_drive_diameter/2,0,rad-cap_height])
         motor_gear();
     
-    for(i=[0,1]) mirror([0,0,i]) translate([0,0,100])
+    for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
+        motor_carrier();
+    
+    for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
         rotate([0,90,0]) bus();
 }
 
 module motor_gear(){
+    hub_rad = in/2;
+    sprung_rad = gear_motor_rad-wall/3;
+    
+    spoke_thick = 1.2;
+    spoke_rad = sprung_rad/2+hub_rad/2+spoke_thick/2;
+    
+    spoke_center_rad = spoke_rad-hub_rad;
+    num_spokes = 6;
+    
+    mount_rad = 12/2+slop;
+    mount_height = 4.5;
+    mount_screw_center_rad = 9.5;
+    mount_screw_rad = m3_rad;
+    mount_screws = 6;
+    
     //herringbone drive gear]
-    translate([0,0,gear_thick/2])
-    mirror([0,1,0]) herringbone (
-        number_of_teeth=gear_motor_teeth,
-        circular_pitch=gear_pitch,
-        pressure_angle=gear_pressure_angle,
-        depth_ratio=gear_depth_ratio,
-        clearance=gear_clearance,
-        helix_angle=gear_angle,
-        gear_thickness=gear_thick,
-        flat=false);
-}
-
-
-
-//the bus holds the electronics, and everything else mounts to it - the drive motors, tilt motors and head motivator too.
-module bus(){
     difference(){
-        union(){
-            cube([100,70,wall],center=true);
+        translate([0,0,gear_thick/2])
+            mirror([0,1,0]) herringbone (
+            number_of_teeth=gear_motor_teeth,
+            circular_pitch=gear_pitch,
+            pressure_angle=gear_pressure_angle,
+            depth_ratio=gear_depth_ratio,
+            clearance=gear_clearance,
+            helix_angle=gear_angle,
+            gear_thickness=gear_thick,
+            flat=false);
+        
+        //shaft
+        d_slot(height = gear_thick+2);
+        
+        //holes for the metal mount shaft
+        #translate([0,0,-.1]) cylinder(r = mount_rad, h=mount_height);
+        for(i=[0:360/mount_screws:359]) rotate([0,0,i]) translate([mount_screw_center_rad,0,-.1])
+            cylinder(r=mount_screw_rad, h=gear_thick+2);
+        
+        translate([0,0,-1]) difference(){
+            cylinder(r=sprung_rad, h=gear_thick+2);
+            
+            //hub
+            cylinder(r=hub_rad, h=gear_thick+2);
+            
+            //spokes
+            for(i=[0:360/num_spokes:359]) rotate([0,0,i]) 
+            difference(){
+                translate([spoke_center_rad,0,0]) intersection(){
+                    cylinder(r=spoke_rad, h=gear_thick+2);
+                    translate([0,-50,0]) cube([100,100,100], center=true);
+                }
+                translate([spoke_center_rad,0,0]) cylinder(r=spoke_rad-spoke_thick, h=gear_thick+4);
+            }
         }
     }
 }
 
 //mounts one or two motors, ready to drive BB8.
 module motor_carrier(){   
-    thick = 15;
     screw_sep=15;
     
     motor_offset = gear_drive_diameter/2+gear_motor_diameter/2;
     motor_angle = 23;
     
-    %for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,thick/2])motor_gear();
+    %for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,motor_carrier_thick/2])motor_gear();
     
-    translate([0,0,-thick])
+    translate([0,0,-motor_carrier_thick])
     difference(){
         union(){
-            for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,thick/2])
-                rotate([0,0,-90]) motor_mount(height = thick, solid=0, screw_sep=screw_sep);
+            for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,motor_carrier_thick/2])
+                rotate([0,0,-90]) motor_mount(height = motor_carrier_thick, solid=0, screw_sep=screw_sep);
             
-            hull() for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,thick/2])
-            for(j=[-screw_sep/2,screw_sep/2]) translate([-motor_rad,j,0]) rotate([0,-90,0]) scale([1,.5,1]) rotate([0,0,22.5]) cylinder(r=thick/2/cos(180/8), h=motor_offset-motor_rad, $fn=8);
+            hull() for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,motor_carrier_thick/2])
+            for(j=[-screw_sep/2,screw_sep/2]) translate([-motor_rad,j,0]) rotate([0,-90,0]) scale([1,.5,1]) rotate([0,0,22.5]) cylinder(r=motor_carrier_thick/2/cos(180/8), h=motor_offset-motor_rad, $fn=8);
             
         
-            translate([0,0,thick/2]) rotate([0,0,90]) rotate([0,180,0]) motor_mount(height = thick, solid=0, motor_rad=22/2+slop, screw_sep=screw_sep);
+            translate([0,0,motor_carrier_thick/2]) rotate([0,0,90]) rotate([0,180,0]) motor_mount(height = motor_carrier_thick, solid=0, motor_rad=22/2+slop, screw_sep=screw_sep);
             
-            *hull() for(i=[-screw_sep/2,screw_sep/2]) translate([motor_offset/2,i,thick/2]) rotate([0,90,0]) scale([1,.5,1]) rotate([0,0,22.5]) cylinder(r=thick/2/cos(180/8), h=20, $fn=8, center=true);
+            *hull() for(i=[-screw_sep/2,screw_sep/2]) translate([motor_offset/2,i,motor_carrier_thick/2]) rotate([0,90,0]) scale([1,.5,1]) rotate([0,0,22.5]) cylinder(r=motor_carrier_thick/2/cos(180/8), h=20, $fn=8, center=true);
             
             *hull(){
-                #cylinder(r=22/2+5, h=thick);
-                translate([motor_offset-motor_rad,0,thick/2]) cube([.1,wall,thick], center=true);
+                #cylinder(r=22/2+5, h=motor_carrier_thick);
+                translate([motor_offset-motor_rad,0,motor_carrier_thick/2]) cube([.1,wall,motor_carrier_thick], center=true);
             }
         }
         
         //attachment for the bus
-        for(i=[-screw_sep/2,screw_sep/2]) translate([motor_offset/2,i,thick/2]){
+        for(i=[-bus_screw_sep/2,bus_screw_sep/2]) translate([bus_drop,i,motor_carrier_thick/2]){
             cylinder(r=m4_rad, h=50, center=true);
             cylinder(r=m4_cap_rad, h=50);
         }
         
         //mount two flanged bearings
-        cylinder(r=22/2+slop, h=thick*3, center=true);
+        cylinder(r=22/2+slop, h=motor_carrier_thick*3, center=true);
     }
-}
-
-module motor_gear(){
-    //herringbone drive gear]
-    translate([0,0,gear_thick/2])
-    mirror([0,1,0]) herringbone (
-        number_of_teeth=gear_motor_teeth,
-        circular_pitch=gear_pitch,
-        pressure_angle=gear_pressure_angle,
-        depth_ratio=gear_depth_ratio,
-        clearance=gear_clearance,
-        helix_angle=gear_angle,
-        gear_thickness=gear_thick,
-        flat=false);
 }
 
 //the holes for the petals - all of them.
@@ -252,9 +287,12 @@ module cap(angle = 0, textured = false){
             %cylinder(r=gear_drive_diameter/2, h=gear_thick);
             
             //connect the gear to the sphere
-            hull(){
-                translate([0,0,gear_thick]) cylinder(r=gear_drive_diameter/2, h=.1);
-                translate([0,0,cap_height-wall+1]) cylinder(r=gear_drive_diameter*.75, h=.1);
+            intersection(){
+                hull(){
+                    translate([0,0,gear_thick]) cylinder(r=gear_drive_diameter/2, h=.1);
+                    translate([0,0,cap_height-wall+1]) cylinder(r=gear_drive_diameter*.75, h=.1);
+                }
+                translate([0,0,-rad+cap_height]) sphere(r=rad-1);
             }
         }
         
