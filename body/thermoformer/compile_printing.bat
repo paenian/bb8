@@ -15,9 +15,7 @@ petals=6;
 
 while [ $petal -lt $petals ]
 do
-	echo $petal
-
-	openscad -o printing/petal${petal}.stl -D part=1 -D angle=${petal}*60 -D textured=true -D assembled=false sphere2.scad &
+	openscad -o printing/petal${petal}.stl -D part=1 -D angle=${petal}*60 -D textured=true -D assembled=false -Dfn=360 sphere2.scad &
 
 	petal=`expr $petal + 1`
 done

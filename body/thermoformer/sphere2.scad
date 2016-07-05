@@ -10,20 +10,24 @@ petal_thick = 3;
 petal_attach_rad = cap_rad - wall;
 
 
-part = 10;
-angle = 30;
-textured = false;
+part = 1;
+angle = 90+30;
+textured = true;
 mirror = 0;
 $fn=30;     //for rendering
-//$fn=120;    //for printing
+//$fn=360;    //for printing
 
-%cube([600,300,.1], center=true);
+%hull(){
+    translate([0,0,-rad]) cube([48*in,24*in,.1], center=true);
+    translate([0,0,-rad+in*12]) cube([24*in,1*in,.1], center=true);
+}
+%cube([600,300,.5], center=true);
 %cube([200,200,1], center=true);
 
 if(part == 0)
     cap(angle = angle, textured = textured);
 if(part == 1)
-    petal(angle = angle, textured = textured);
+    rotate([0,90,0]) petal(angle = angle, textured = textured);
 if(part == 2)
     bus();
 if(part == 3)
@@ -72,17 +76,19 @@ gear_angle = atan(2*nTwist*gear_pitch/gear_thick);
 gear_motor_diameter = 45;
 gear_motor_rad = gear_motor_diameter/2;
 
-//head carriage variables
-head_width = 100;
+//head cage variables
+head_length = 100;
+head_width = 70;
 
 //bus variables
 motor_carrier_thick = 15;
 motor_carrier_inset = 10;
 motor_carrier_width = 100;
 bus_width = 70; //the width of the dagu 4 motor shield, basically.
-bus_length= rad - cap_height - head_width;
+bus_length= rad - cap_height - head_length;
 bus_drop = 40;
 bus_screw_sep = 20;
+
 
 //the bus holds the electronics, and everything else mounts to it - the drive motors, tilt motors and head motivator too.
 module bus(){
@@ -239,7 +245,7 @@ module petal(angle = 0, textured = false){
         }
         
         if(textured == true){
-            bb8_texture();
+            bb8_texture_shallow();
         }
     }
 }
@@ -328,3 +334,14 @@ module bb8_texture(){
 
     scale([s,s,s]) import("body_solid.stl");
 }
+
+module bb8_texture_shallow(){
+        s=6.51;
+    //scale([s,s,s]) rotate([0,0,-27.5]) rotate([0,3.6,0]) rotate([29.25,0,0])import("bb8_union_rep_simplified.stl");
+
+    union(){
+        scale([s,s,s]) import("body_solid.stl");
+        sphere(r=rad-.5);
+    }
+}
+    
