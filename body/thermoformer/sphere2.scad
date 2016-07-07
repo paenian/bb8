@@ -2,11 +2,11 @@ include <../../configure.scad>
 use <bearing.scad>
 use <motor_mount.scad>
 
-cap_rad = rad/2;
-cap_height = 45;
+cap_rad = 125;
+cap_height = 50;
 
 num_petals = 6;
-petal_thick = 6;
+petal_thick = 5;
 petal_attach_rad = cap_rad - wall;
 
 
@@ -22,7 +22,7 @@ $fn=facets;
     translate([0,0,-rad]) cube([48*in,24*in,.1], center=true);
     translate([0,0,-rad+in*12]) cube([24*in,1*in,.1], center=true);
 }
-*%cube([600,300,.5], center=true);
+%cube([600,300,400], center=true);
 *%cube([200,200,1], center=true);
 
 if(part == 0)
@@ -60,7 +60,7 @@ echo(helix_angle);
 
 
 //Gear variables
-gear_drive_diameter = 140;
+gear_drive_diameter = 150;
 gear_drive_rad = gear_drive_diameter/2;
 
 gear_motor_diameter = 30;   //this is guessed.
@@ -70,6 +70,8 @@ gear_drive_teeth = 67;
 gear_motor_teeth = 13;
 gear_thick = 12;
 gear_clearance = .1;
+
+motor_offset = gear_drive_diameter/2+gear_motor_diameter/2;
 
 DR=0.6*1;   //this is the maximum depth ratio
 P = 45;
@@ -94,7 +96,7 @@ bus_length= rad - cap_height - head_length/2-motor_carrier_thick-motor_carrier_i
 bus_drop = 50;
 bus_screw_sep = 20;
 
-
+%translate([0,0,-200]) cube([50,50,50]);
 
 module assembled(){
     for(i=[0,1]) mirror([0,0,i])
@@ -104,13 +106,17 @@ module assembled(){
         petal(angle=i, textured=false);
     
     //this is drawn in by the motor carrier
-    for(i=[0,1]) mirror([0,0,i]) translate([gear_motor_diameter/2+gear_drive_diameter/2,0,rad-cap_height])
-        motor_gear();
+    for(i=[0,1]) mirror([0,0,i]){
+        *%sphere(r=rad-wall, $fn=70);
+        *%translate([0,0,rad-cap_height]) cylinder(r=gear_drive_rad, h=gear_motor_rad);
+        
+        translate([motor_offset,0,rad-cap_height]) motor_gear();
+    }
     
     *for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
         motor_carrier();
     
-    for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
+    *for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
         rotate([0,90,0]) bus();
     
     *head_cage();
@@ -245,7 +251,6 @@ module motor_gear(){
 module motor_carrier(){   
     screw_sep=15;
     
-    motor_offset = gear_drive_diameter/2+gear_motor_diameter/2;
     motor_angle = 23;
     
     %for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,motor_carrier_thick/2])motor_gear();
@@ -319,6 +324,9 @@ module petal(angle = 0, textured = false){
 }
 
 module cap(angle = 0, textured = false){
+    
+    num_braces = 3;
+    
     difference(){
         union(){
             //cap exterior
@@ -326,7 +334,12 @@ module cap(angle = 0, textured = false){
             intersection(){
                 difference(){
                     sphere(r=rad);
-                    sphere(r=rad-wall);
+                    
+                    intersection(){
+                        sphere(r=rad-wall);
+                        //an extra thick area for the panel screws to go into.
+                        cylinder(r=cap_rad-wall, h=600, center=true);
+                    }
                 }
                
                 union(){
@@ -344,8 +357,6 @@ module cap(angle = 0, textured = false){
                     rotate([angle,0,0]) bb8_texture();
                 }
             }
-            
-            //extra ring of material for petal screws?
             
             //herringbone drive gear
             translate([0,0,gear_thick/2])
@@ -371,7 +382,7 @@ module cap(angle = 0, textured = false){
         }
         
         //central axle hole
-        translate([0,0,-1]) cylinder(r=axle_rad, h=cap_height-wall+1);
+        translate([0,0,-1]) cylinder(r=axle_rad, h=cap_height+2);
         
         //holes to attach the petals
         translate([0,0,-rad+cap_height]) rotate([0,0,180/num_petals]) petal_holes(m4_rad = m4_tap_rad);
@@ -379,15 +390,18 @@ module cap(angle = 0, textured = false){
         //hollow out the insides
         difference(){
             intersection(){
-                translate([0,0,-1]) cylinder(r=gear_drive_diameter/2-wall, h=100);
+                translate([0,0,-1]) cylinder(r=gear_drive_diameter/2-wall*.75, h=100);
                 translate([0,0,-rad+cap_height]) sphere(r=rad-wall);
+                
+                //todo: make the top removable :-)
+                //The top will hold in the rod.
             }
             
             //center rod
             cylinder(r=axle_rad+wall/2, h=50);
             
             //stiffeners
-            for(i=[0:360/num_petals:359]) rotate([0,0,i]) translate([-1,0,0]) cube([2,100,100]);
+            for(i=[0:360/num_braces:359]) rotate([0,0,i]) translate([-2,0,0]) cube([4,100,100]);
         }
         
         //flatten the bottom for easy printing
