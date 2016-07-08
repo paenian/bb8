@@ -10,9 +10,9 @@ petal_thick = 5;
 petal_attach_rad = cap_rad - wall;
 
 
-part = 10;
+part = 0;
 angle = 90+30;
-textured = true;
+textured = false;
 mirror = 0;
 facets = 30;    //for rendering
 
@@ -102,24 +102,24 @@ module assembled(){
     for(i=[0,1]) mirror([0,0,i])
         translate([0,0,rad-cap_height]) cap(textured=false);
     
-    *for(i=[180/num_petals:360/num_petals:180-1])
+    for(i=[180/num_petals:360/num_petals:180-1])
         petal(angle=i, textured=false);
     
     //this is drawn in by the motor carrier
-    for(i=[0,1]) mirror([0,0,i]){
+    *for(i=[0,1]) mirror([0,0,i]){
         *%sphere(r=rad-wall, $fn=70);
         *%translate([0,0,rad-cap_height]) cylinder(r=gear_drive_rad, h=gear_motor_rad);
         
         translate([motor_offset,0,rad-cap_height]) motor_gear();
     }
     
-    *for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
+    for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
         motor_carrier();
     
-    *for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
+    for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
         rotate([0,90,0]) bus();
     
-    *head_cage();
+    head_cage();
 }
 
 //head cage is a delineator - it holds the space where the head will be mounted inside, and also provides a low, centered mount point for the tilt weights and gyroscope.
@@ -132,9 +132,10 @@ module head_cage(){
         union(){
             //arms
             for(i=[0,1]) mirror([0,0,i]) translate([0,0,-head_length/2]){
+                //shaft mount
                 rotate([0,0,0]) rotate([0,180,0]) translate([0,0,-motor_carrier_thick/2]) motor_mount(height = motor_carrier_thick, solid=0, motor_rad=22/2+slop, screw_sep=15);
                 hull(){
-                    translate([0,-side_width,0]) cube([side_length,side_width,motor_carrier_thick]);
+                    translate([0,-side_width,0]) cube([bus_drop,side_width,motor_carrier_thick]);
                 }
             }//end arms
             
@@ -143,22 +144,26 @@ module head_cage(){
                 cylinder(r=m4_cap_rad+wall/2, h=motor_carrier_thick);
             }
             
+            //mount for the pendulum
+            translate([side_length,0,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_solid(height = side_width*2, solid=0, motor_rad=22/2+slop, screw_sep=15);
+            
             //base
-            *for(i=[0,1]) mirror([0,0,i]) translate([side_length, -side_width, -head_length/2]) rotate([0,-45,0]) cube([motor_carrier_thick*sqrt(2), side_width, motor_carrier_thick*sqrt(2)]);
-            hull(){
-                *for(i=[0,1]) mirror([0,0,i]) translate([side_length, -side_width, -head_length/2]){
-                    intersection(){
-                        rotate([0,-45,0]) cube([motor_carrier_thick*sqrt(2), side_width, motor_carrier_thick*sqrt(2)]);
-                        cube([motor_carrier_thick, side_width, motor_carrier_thick]);
-                    }
-                }
-                
-                translate([0,0,0]) rotate([90,0,0]) cylinder(r=head_length/2, h=side_width);
+            translate([side_length-head_length/2,0,0]) rotate([90,0,0]) difference(){
+                cylinder(r=head_length/2, h=side_width);
+                translate([0,0,-1]) cylinder(r=head_length/2-motor_carrier_thick, h=side_width+2);
+                translate([-50,0,0]) cube([100,head_length+2,50], center=true);
+            }
                 
                 //middle bump for mounting stuff
                 *translate([side_length,0,0]) rotate([0,90,0]) cylinder(r=side_width, h=motor_carrier_thick);
-            }
+            
         }
+        
+        //make the center pure hollow
+        translate([side_length-head_length/2,0,0]) rotate([90,0,0]) translate([0,0,-1]) cylinder(r=head_length/2-motor_carrier_thick, h=side_width*3, center=true);
+        
+        //hollow out the lower mount
+        #translate([side_length,0,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_holes(height = side_width*3, solid=0, motor_rad=22/2+slop, screw_sep=15);
         
         //mount flanged bearings, two on each side
         cylinder(r=22/2+slop, h=head_length+10, center=true);
