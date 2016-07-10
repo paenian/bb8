@@ -4,16 +4,18 @@ use <motor_mount.scad>
 
 cap_rad = 125;
 cap_height = 50;
+capcap_height = 15;
+
 
 num_petals = 6;
 petal_thick = 5;
 petal_attach_rad = cap_rad - wall;
 
 
-part = 0;
+part = 10;
 angle = 90+30;
 textured = false;
-mirror = 0;
+flip = 0;
 facets = 30;    //for rendering
 
 $fn=facets;
@@ -22,19 +24,21 @@ $fn=facets;
     translate([0,0,-rad]) cube([48*in,24*in,.1], center=true);
     translate([0,0,-rad+in*12]) cube([24*in,1*in,.1], center=true);
 }
-%cube([600,300,400], center=true);
+*%cube([600,300,400], center=true);
 *%cube([200,200,1], center=true);
 
 if(part == 0)
     cap(angle = angle, textured = textured);
+if(part == 11)
+    capcap(angle = angle, textured = textured);
 if(part == 1)
     rotate([0,90,0]) petal(angle = angle, textured = textured);
 if(part == 2)
     bus();
 if(part == 3)
-    motor_carrier();
+    mirror([0,0,flip]) motor_carrier();
 if(part == 4)
-    motor_gear();
+    mirror([0,0,flip]) motor_gear();
 if(part == 5)
     head_cage();
 
@@ -71,6 +75,8 @@ gear_motor_teeth = 13;
 gear_thick = 12;
 gear_clearance = .1;
 
+capcap_rad = gear_drive_diameter/2;
+
 motor_offset = gear_drive_diameter/2+gear_motor_diameter/2;
 
 DR=0.6*1;   //this is the maximum depth ratio
@@ -99,6 +105,9 @@ bus_screw_sep = 20;
 %translate([0,0,-200]) cube([50,50,50]);
 
 module assembled(){
+    for(i=[0,1]) mirror([0,0,i])
+        translate([0,0,rad+50]) capcap(textured=false);
+    
     for(i=[0,1]) mirror([0,0,i])
         translate([0,0,rad-cap_height]) cap(textured=false);
     
@@ -135,7 +144,7 @@ module head_cage(){
                 //shaft mount
                 rotate([0,0,0]) rotate([0,180,0]) translate([0,0,-motor_carrier_thick/2]) motor_mount(height = motor_carrier_thick, solid=0, motor_rad=22/2+slop, screw_sep=15);
                 hull(){
-                    translate([0,-side_width,0]) cube([bus_drop,side_width,motor_carrier_thick]);
+                    translate([0,-side_width,0]) cube([bus_drop+10,side_width,motor_carrier_thick]);
                 }
             }//end arms
             
@@ -148,19 +157,21 @@ module head_cage(){
             translate([side_length,0,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_solid(height = side_width*2, solid=0, motor_rad=22/2+slop, screw_sep=15);
             
             //base
-            translate([side_length-head_length/2,0,0]) rotate([90,0,0]) difference(){
-                cylinder(r=head_length/2, h=side_width);
-                translate([0,0,-1]) cylinder(r=head_length/2-motor_carrier_thick, h=side_width+2);
+            translate([0,0,0]) rotate([90,0,0]) difference(){
+                intersection(){
+                    cylinder(r=side_length, h=side_width);
+                    cube([200,head_length,50], center=true);
+                }
+                translate([0,0,-1]) cylinder(r=side_length-motor_carrier_thick, h=side_width+2);
                 translate([-50,0,0]) cube([100,head_length+2,50], center=true);
             }
-                
-                //middle bump for mounting stuff
-                *translate([side_length,0,0]) rotate([0,90,0]) cylinder(r=side_width, h=motor_carrier_thick);
-            
         }
         
         //make the center pure hollow
-        translate([side_length-head_length/2,0,0]) rotate([90,0,0]) translate([0,0,-1]) cylinder(r=head_length/2-motor_carrier_thick, h=side_width*3, center=true);
+        intersection(){
+            rotate([90,0,0]) translate([0,0,-1]) cylinder(r=side_length-motor_carrier_thick, h=side_width*3, center=true);
+            translate([0,0,0]) cube([200,head_length+25,50], center=true);
+        }
         
         //hollow out the lower mount
         #translate([side_length,0,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_holes(height = side_width*3, solid=0, motor_rad=22/2+slop, screw_sep=15);
@@ -209,7 +220,7 @@ module motor_gear(){
     mount_rad = 12/2+slop;
     mount_height = 4.5;
     mount_screw_center_rad = 9.5;
-    mount_screw_rad = m3_rad;
+    mount_screw_rad = m3_rad+slop;
     mount_screws = 6;
     
     //herringbone drive gear]
@@ -292,15 +303,15 @@ module motor_carrier(){
 }
 
 //the holes for the petals - all of them.
-module petal_holes(){
+module petal_holes(screw_rad = m3_rad){
     angle = 29.2;
     hole_sep = 15;
     
     for(i=[180/num_petals:360/num_petals:360-1]) rotate([0,0,i])
         rotate([angle,0,0]) {
             for(j=[-hole_sep/2, hole_sep/2]) rotate([0,j,0]) translate([0,0,rad-wall*2]) {
-                cylinder(r=m4_rad, h=wall*3);
-                translate([0,0,wall*2-petal_thick]) cylinder(r1=m4_rad, r2=m4_rad+wall, h=wall);
+                cylinder(r=screw_rad+slop, h=wall*3);
+                translate([0,0,wall*2-petal_thick]) cylinder(r1=screw_rad+slop, r2=screw_rad+wall, h=wall);
             }
         }
 }
@@ -325,6 +336,45 @@ module petal(angle = 0, textured = false){
         if(textured == true){
             bb8_texture_shallow();
         }
+    }
+}
+
+module capcap_screws(num_screws=3, screw_rad = m3_rad){
+    for(i=[0:360/num_screws:359]) rotate([0,0,i]) translate([0,capcap_rad-wall/2.5,-wall*2+2]){
+        cylinder(r=screw_rad+slop, h=wall*8, center=true);
+        translate([0,0,wall*2]) cylinder(r1=screw_rad+slop, r2=screw_rad+wall, h=wall);
+        //translate([-m3_nut_rad*2,0,wall]) cube([m3_nut_rad*4, m3_nut_rad*2, 4], center=true);
+    }
+}
+
+module capcap(textured = false){
+    difference(){
+        union(){
+            //cap exterior
+            translate([0,0,-rad+capcap_height])
+            intersection(){
+                difference(){
+                    sphere(r=rad);
+                    sphere(r=rad-wall);
+                }
+                
+                cylinder(r=capcap_rad, h=rad*3, center=true);
+                
+                //texture it?
+                if(textured == true){
+                    rotate([angle,0,0]) bb8_texture_shallow();
+                }
+            }
+        }
+        
+        //screwholes
+        capcap_screws();
+        
+        //the central rod
+        translate([0,0,-rad+capcap_height]) cylinder(r=axle_rad, h=500, center=true);
+        
+        //flatten the bottom for easy printing
+        translate([0,0,-rad]) cube([rad*2, rad*2, rad*2], center=true);
     }
 }
 
@@ -359,7 +409,7 @@ module cap(angle = 0, textured = false){
                 
                 //texture it?
                 if(textured == true){
-                    rotate([angle,0,0]) bb8_texture();
+                    rotate([angle,0,0]) bb8_texture_shallow();
                 }
             }
             
@@ -386,17 +436,20 @@ module cap(angle = 0, textured = false){
             }
         }
         
+        //capcap screws
+        translate([0,0,cap_height-capcap_height]) capcap_screws(screw_rad = m3_rad-slop);
+        
         //central axle hole
         translate([0,0,-1]) cylinder(r=axle_rad, h=cap_height+2);
         
         //holes to attach the petals
-        translate([0,0,-rad+cap_height]) rotate([0,0,180/num_petals]) petal_holes(m4_rad = m4_tap_rad);
+        translate([0,0,-rad+cap_height]) rotate([0,0,180/num_petals]) petal_holes(screw_rad = m3_rad-slop);
         
         //hollow out the insides
         difference(){
             intersection(){
                 translate([0,0,-1]) cylinder(r=gear_drive_diameter/2-wall*.75, h=100);
-                translate([0,0,-rad+cap_height]) sphere(r=rad-wall);
+                //translate([0,0,-rad+cap_height]) sphere(r=rad-wall);
                 
                 //todo: make the top removable :-)
                 //The top will hold in the rod.
@@ -407,6 +460,12 @@ module cap(angle = 0, textured = false){
             
             //stiffeners
             for(i=[0:360/num_braces:359]) rotate([0,0,i]) translate([-2,0,0]) cube([4,100,100]);
+        }
+        
+        //inset for the capcap
+        difference(){
+            translate([0,0,cap_height-capcap_height]) cylinder(r=capcap_rad+slop, h=rad*3);
+            translate([0,0,-rad+cap_height]) sphere(r=rad-wall);
         }
         
         //flatten the bottom for easy printing
