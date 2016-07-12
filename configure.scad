@@ -15,7 +15,7 @@ m4_bearing_rad = 9/2+slop;
 m4_bearing_height = 4;
 m4_bearing_race_rad = (9+4)/4;
 
-axle_rad = 8/2+slop;
+axle_rad = 10/2+slop;
 
 //motor variables
 motor_rad = 37/2;
