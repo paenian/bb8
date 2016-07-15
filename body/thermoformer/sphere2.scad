@@ -384,16 +384,26 @@ module cap(angle = 0, textured = false){
     
     difference(){
         union(){
+            //some stiffening ribs
+            intersection(){
+                for(i=[0:360/num_braces/2:359]) rotate([0,0,i]) translate([-2,0,gear_thick+1]) cube([4,rad,cap_height-gear_thick-1]);
+                translate([0,0,-rad+cap_height]) sphere(r=rad-wall/2);
+            }
+                            
             //cap exterior
             translate([0,0,-rad+cap_height])
             intersection(){
                 difference(){
                     sphere(r=rad);
                     
-                    intersection(){
-                        sphere(r=rad-wall);
-                        //an extra thick area for the panel screws to go into.
-                        cylinder(r=cap_rad-wall, h=600, center=true);
+                    difference(){
+                        intersection(){
+                            sphere(r=rad-wall);
+                            //an extra thick area for the panel screws to go into.
+                            cylinder(r=cap_rad-wall, h=600, center=true);
+                        }
+                        
+                        
                     }
                 }
                
@@ -429,7 +439,7 @@ module cap(angle = 0, textured = false){
             //connect the gear to the sphere
             intersection(){
                 hull(){
-                    translate([0,0,gear_thick]) cylinder(r=gear_drive_diameter/2, h=.1);
+                    translate([0,0,gear_thick]) cylinder(r=gear_drive_diameter/2-1, h=.1);
                     translate([0,0,cap_height-wall+1]) cylinder(r=gear_drive_diameter*.75, h=.1);
                 }
                 translate([0,0,-rad+cap_height]) sphere(r=rad-1);
