@@ -30,7 +30,7 @@ $fn=facets;
 if(part == 0)
     cap(angle = angle, textured = textured);
 if(part == 11)
-    capcap(angle = angle, textured = textured);
+    mirror([0,1,0]) capcap(angle = angle, textured = textured);
 if(part == 1)
     rotate([0,90,0]) petal(angle = angle, textured = textured);
 if(part == 2)
@@ -106,13 +106,13 @@ bus_screw_sep = 20;
 
 module assembled(){
     for(i=[0,1]) mirror([0,0,i])
-        translate([0,0,rad+50]) capcap(textured=false);
+        translate([0,0,rad+50]) capcap(textured=textured);
     
     for(i=[0,1]) mirror([0,0,i])
-        translate([0,0,rad-cap_height]) cap(textured=false);
+        translate([0,0,rad-cap_height]) cap(textured=textured);
     
     for(i=[180/num_petals:360/num_petals:180-1])
-        petal(angle=i, textured=false);
+        petal(angle=i, textured=textured);
     
     //this is drawn in by the motor carrier
     *for(i=[0,1]) mirror([0,0,i]){
@@ -221,6 +221,8 @@ module motor_gear(){
     mount_height = 4.5;
     mount_screw_center_rad = 9.5;
     mount_screw_rad = m3_rad+slop;
+    mount_screw_cap_rad = 6/2+slop;
+    mount_screw_cap_height = 2;
     mount_screws = 6;
     
     //herringbone drive gear]
@@ -241,8 +243,10 @@ module motor_gear(){
         
         //holes for the metal mount shaft
         translate([0,0,-.1]) cylinder(r = mount_rad, h=mount_height);
-        for(i=[0:360/mount_screws:359]) rotate([0,0,i]) translate([mount_screw_center_rad,0,-.1])
-            cylinder(r=mount_screw_rad, h=gear_thick+2);
+        for(i=[0:360/mount_screws:359]) rotate([0,0,i]) translate([mount_screw_center_rad,0,-.1]){
+            cylinder(r=mount_screw_rad, h=gear_thick+.2);
+            translate([0,0,gear_thick+.2-mount_screw_cap_height]) cylinder(r1=mount_screw_rad, r2=mount_screw_cap_rad, h=mount_screw_cap_height);
+        }
         
         translate([0,0,-1]) difference(){
             cylinder(r=sprung_rad, h=gear_thick+2);
