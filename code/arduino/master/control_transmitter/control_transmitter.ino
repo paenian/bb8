@@ -1,14 +1,10 @@
 /*****************************************************************
-Serial_Remote_Control.ino
-Write your Arduino's pins (analog or digital) or read from those
-pins (analog or digital) using a remote Serial.
-Jim Lindblom @ SparkFun Electronics
-Original Creation Date: May 7, 2014
+This is the Control side of a remote control using a modified
+version of the XBEE remote control code.
 
-This sketch requires an Serial, Serial Shield and another Serial tied to
-your computer (via a USB Explorer). You can use XCTU's console, or
-another serial terminal program (even the serial monitor!), to send
-commands to the Arduino. 
+It sends commands in response to controller input, and transmits
+to both the body and the head.
+
 
 
 This sketch has been augmented by Paul Chase to allow for multiple
@@ -37,21 +33,9 @@ Example usage (send these commands from your computer terminal):
     - Use 0, l, or L to write LOW
     - Use 1, h, or H to write HIGH
 
-Hardware Hookup:
-  The Arduino shield makes all of the connections you'll need
-  between Arduino and Serial. Make sure the SWITCH IS IN THE 
-  "DLINE" POSITION.
-
-Development environment specifics:
-    IDE: Arduino 1.0.5
-    Hardware Platform: SparkFun RedBoard
-    Serial Shield & Serial Series 1 1mW (w/ whip antenna)
-        Serial USB Explorer connected to computer with another
-          Serial Series 1 1mW connected to that.
-
 This code is beerware; if you see me (or any other SparkFun 
 employee) at the local, and you've found our code helpful, please 
-buy us a round!
+buy us a round!  Paul Chase would like a beer too :-)
 
 Distributed as-is; no warranty is given.
 *****************************************************************/
@@ -59,7 +43,6 @@ Distributed as-is; no warranty is given.
 //#include <SoftwareSerial.h>
 // Trying it using hardware serial instead to avoid conflict with
 //  the servo library.
-#include <servo.h>
 #include "configuration.h"
 
 //comment this out to turn serial debugging off.
@@ -68,14 +51,33 @@ Distributed as-is; no warranty is given.
 #define DEBUG 1
 
 
-//SoftwareSerial Serial(2, 3); // Arduino RX, TX (Serial Dout, Din)
+char BodySendChar = 'B';	//messages with $B go to the body
+char ReceiverChar = 'T';		//messages with $T are for us
 
-int numPins = 14;
-boolean servoPins[numPins];  	//array of servo pins - to keep
-				//track of them quickly.
 
-char ReceiverChar = 'B';	//read messages with a B
-char SendChar = 'T';		//send messages $T
+uint8_t pot_slop = 5;	//don't send a message unless the pot
+			//reading is + or - this value
+
+////////Pin Defines are in the configuration.h!
+
+////////Potentiometer Variables - these are stored as bytes, converted
+// when they're read.
+// 0 is full reverse, 123 full stop, 255 full forward
+uint8_t bodyPotX = 123;
+uint8_t bodyPotY = 123;
+
+uint8_t headPotX = 123;
+uint8_t headPotY = 123;
+uint8_t headPotA = 90;
+
+
+////////Battery Voltage
+// We also track battery voltage for the body, head and controller itself.
+uint8_t controllerVoltage = 0;
+uint8_t bodyVoltage = 0;
+uint8_t headVoltage = 0;
+
+//the range of voltages is restricted - and TBD.
 
 void setup()
 {
@@ -83,13 +85,62 @@ void setup()
   // rate matches your Serial setting (9600 is default).
   Serial.begin(9600); 
 
-  for(i=0; i<numPins; i++){
-    servoPins[i] = false;
-  }
+
+  //Initialize the potentiometers
+  //body pot: two axes
+  initBodyPot();
+
+  //head pot: three axes
+  initHeadPot();
 
 #ifdef DEBUG
   printMenu(); // Print a helpful menu
 #endif
+}
+
+void initBodyPot(){
+  readBodyPot(5);
+}
+
+void readBodyPot(){
+  readBodyPot(1);
+}
+
+void readBodyPot(uint8_t numSamples);
+  int x=0;
+  int y=0;
+
+  for(uint8_t i=0, i<numSamples, i++){
+    x += analogRead(BODY_POT_X_PIN);
+    y += analogRead(BODY_POT_Y_PIN);
+  }
+
+  bodyPotX = map(x, 0, 1023*numSamples, 0, 255);
+  bodyPotY = map(y, 0, 1023*numSamples, 0, 255);
+}
+
+void initHeadPot(){
+  readHeadPot(5);
+}
+
+void readHeadPot(){
+  readHeadPot(1);
+}
+
+void readHeadPot(uint8_t numSamples){
+  int x=0;
+  int y=0;
+  int a=0;
+
+  for(uint8_t i=0, i<numSamples, i++){
+    x += analogRead(HEAD_POT_X_PIN);
+    y += analogRead(HEAD_POT_Y_PIN);
+    a += analogRead(HEAD_POT_A_PIN);
+  }
+
+  headPotX = map(x, 0, 1023*numSamples, 0, 255);
+  headPotY = map(y, 0, 1023*numSamples, 0, 255);
+  headPotA = map(a, 0, 1023*numSamples, 0, 180);
 }
 
 void loop()
