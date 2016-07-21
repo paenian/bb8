@@ -94,6 +94,9 @@ void setup()
 
 void loop()
 {
+  //TODO: check battery voltage, shut down if it's too low.
+
+
   // In loop() we continously check to see if a command has been
   //  received.
   if (Serial.available())

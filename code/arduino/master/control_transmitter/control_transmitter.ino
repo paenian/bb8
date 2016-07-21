@@ -63,12 +63,12 @@ uint8_t pot_slop = 5;	//don't send a message unless the pot
 ////////Potentiometer Variables - these are stored as bytes, converted
 // when they're read.
 // 0 is full reverse, 123 full stop, 255 full forward
-uint8_t bodyPotX = 123;
-uint8_t bodyPotY = 123;
+uint8_t[3] bodyPot = {127, 127, 127}; //the third is actually binary here, to spin the body.
+uint8_t[3] bodyPotZero = {127,127,127}; //everything perfectly centered
 
-uint8_t headPotX = 123;
-uint8_t headPotY = 123;
-uint8_t headPotA = 90;
+
+uint8_t[3] headPot = {127,127,90}; //the third is angle, for turning the head
+uint8_t[3] headPotZero = {127, 127, 90}; //perfectly centered
 
 
 ////////Battery Voltage
@@ -76,6 +76,8 @@ uint8_t headPotA = 90;
 uint8_t controllerVoltage = 0;
 uint8_t bodyVoltage = 0;
 uint8_t headVoltage = 0;
+
+#define MIN_VOLTAGE 2.9
 
 //the range of voltages is restricted - and TBD.
 
@@ -99,38 +101,60 @@ void setup()
 }
 
 void initBodyPot(){
-  readBodyPot(5);
+  pinMode(BODY_SPIN_BUTTON_LEFT, INPUT_PULLUP);
+  pinMode(BODY_SPIN_BUTTON_RIGHT, INPUT_PULLUP);
+
+  bodyPotZero = readBodyPot(5);
 }
 
-void readBodyPot(){
-  readBodyPot(1);
+uint8_t[3] readBodyPot(){
+  return readBodyPot(1);
 }
 
-void readBodyPot(uint8_t numSamples);
+uint8_t[3] readBodyPot(uint8_t numSamples);
   int x=0;
   int y=0;
+  uint8_t[3] ret;
 
+  //Spin?
+  ret[2] = 127;
+  if(digitalRead(BODY_SPIN_LEFT) == LOW)
+    ret[2] -= 127;
+  if(digitalRead(BODY_SPIN_RIGHT) == LOW)
+    ret[2] += 127;
+    
+
+  //XY movement
   for(uint8_t i=0, i<numSamples, i++){
     x += analogRead(BODY_POT_X_PIN);
     y += analogRead(BODY_POT_Y_PIN);
   }
 
-  bodyPotX = map(x, 0, 1023*numSamples, 0, 255);
-  bodyPotY = map(y, 0, 1023*numSamples, 0, 255);
+  //cheap average
+  ret[0] = map(x, 0, 1023*numSamples, 0, 255);
+  ret[1] = map(y, 0, 1023*numSamples, 0, 255);
+
+
+  //adjust to the true zero voltage of our pots
+  ret[0] += constrain(bodyPotZero[0] - 127, 0, 255);
+  ret[1] += constrain(bodyPotZero[1] - 127, 0, 255);
+
+  return ret;
 }
 
 void initHeadPot(){
-  readHeadPot(5);
+  headPotZero = readHeadPot(5);
 }
 
-void readHeadPot(){
-  readHeadPot(1);
+uint8_t[3] readHeadPot(){
+  return readHeadPot(1);
 }
 
-void readHeadPot(uint8_t numSamples){
+uint8_t[3] readHeadPot(uint8_t numSamples){
   int x=0;
   int y=0;
   int a=0;
+  uint8_t[3] ret;
 
   for(uint8_t i=0, i<numSamples, i++){
     x += analogRead(HEAD_POT_X_PIN);
@@ -138,50 +162,72 @@ void readHeadPot(uint8_t numSamples){
     a += analogRead(HEAD_POT_A_PIN);
   }
 
-  headPotX = map(x, 0, 1023*numSamples, 0, 255);
-  headPotY = map(y, 0, 1023*numSamples, 0, 255);
-  headPotA = map(a, 0, 1023*numSamples, 0, 180);
+  //cheap way to calculate the average
+  ret[0] = map(x, 0, 1023*numSamples, 0, 255);
+  ret[1] = map(y, 0, 1023*numSamples, 0, 255);
+  ret[2] = map(a, 0, 1023*numSamples, 0, 180);
+
+  //account for the zero point
+  ret[0] += constrain(headPotZero[0] - 127, 0, 255);
+  ret[1] += constrain(headPotZero[1] - 127, 0, 255);
+  ret[2] += constrain(headPotZero[2] - 90, 0, 255);
+
+  return ret;
 }
+
+
 
 void loop()
 {
-  // In loop() we continously check to see if a command has been
-  //  received.
-  if (Serial.available())
-  {
-    char c = Serial.read();
-    if(c == '$'){  //commands start with a $ sign
-      while(Serial.available() < 1); //wait for the next character
-      c = Serial.read();
-      if( c == ReceiverChar){  //the code matches
-        while(Serial.available() < 1);  //wait for the next character
-	c = Serial.read(); //finally we get the command
-        switch (c){
-          case 'w':      // If received 'w'
-          case 'W':      // or 'W'
-            writeAPin(); // Write analog pin
-          break;
-          case 'd':      // If received 'd'
-          case 'D':      // or 'D'
-            writeDPin(); // Write digital pin
-          break;
-          case 'r':      // If received 'r'
-          case 'R':      // or 'R'
-            readDPin();  // Read digital pin
-          break;
-          case 'a':      // If received 'a'
-          case 'A':      // or 'A'
-            readAPin();  // Read analog pin
-          break;
-          case 's':
-          case 'S':      //servo pin
-            writeSPin();
-          break;
-        }
-      }
-    }
+  //check the battery voltage - shutdown if it's too low.
+  checkBatteryForShutdown();
+
+  //Body Pots
+  readBodyPots();
+  if(bodyPotX > 
+
+
+  handleBodyButtons();	//body has spin left and right buttons, too
+  handleHeadPots();	//xya joystick
+  handleButtonArray();  //funny noises in a big fancy grid
+
+
+  sleep(1000); //for debugging - to reduce the number of commands sent.
+}
+
+
+
+
+////////BATTERY AND SHUTDOWN
+// Used to safe the robot if the controller battery is low.
+// The controller monitors its battery, and shuts down the body and
+// head before it packs in itself.
+void checkBatteryForShutdown(){
+
+  //if battery voltage is too low, then:
+  if(5 > 6){
+    shutdownBody();
+    shutdownHead();
+    shutdownController();
   }
 }
+
+void shutdownBody(){
+  //need to turn off the motors
+}
+
+void shutdownHead(){
+  //probably don't need any shutdown here
+}
+
+void shutdownController(){
+  //disconnect the battery so it doesn't get too low
+}
+
+
+
+
+
 
 // write servo pin
 // send S or s to enter
