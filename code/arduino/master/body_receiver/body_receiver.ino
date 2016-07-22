@@ -59,7 +59,7 @@ Distributed as-is; no warranty is given.
 //#include <SoftwareSerial.h>
 // Trying it using hardware serial instead to avoid conflict with
 //  the servo library.
-#include <servo.h>
+#include <Servo.h>
 #include "configuration.h"
 
 //comment this out to turn serial debugging off.
@@ -70,8 +70,8 @@ Distributed as-is; no warranty is given.
 
 //SoftwareSerial Serial(2, 3); // Arduino RX, TX (Serial Dout, Din)
 
-int numPins = 14;
-boolean servoPins[numPins];  	//array of servo pins - to keep
+#define NUMPINS 14
+Servo *servoPins[NUMPINS];  	//array of servo pins - to keep
 				//track of them quickly.
 
 char ReceiverChar = 'B';	//read messages with a B
@@ -83,8 +83,9 @@ void setup()
   // rate matches your Serial setting (9600 is default).
   Serial.begin(9600); 
 
-  for(i=0; i<numPins; i++){
-    servoPins[i] = false;
+  //make all the pointers 0
+  for(uint8_t i=0; i<NUMPINS; i++){
+    servoPins[i] = 0;
   }
 
 #ifdef DEBUG
@@ -148,14 +149,38 @@ void writeSPin()
               ASCIItoInt(Serial.read()) * 10 +
 	      ASCIItoInt(Serial.read());
 
-  angle = constrain(value, 0, 180);
+  angle = constrain(angle, 0, 180);
 
 #ifdef DEBUG
-  Serial.println("Body: servo "+pin+" to <"+angle);
+  Serial.print("Body: servo ");
+  Serial.print(pin);
+  Serial.print(" to <");
+  Serial.println(angle);
 #endif
 
   //todo: set this up.
+  //Could do a linked list of servos, or maybe an array of servo pointers
+  //array of servo pointers, populated by pin number!
+  //need to check if a pointer is null... I think an unset pointer is just
+  //random.
 
+  
+  //first, see if it exists
+  if(servoPins[pin] == 0){
+    //create the servo, since it doesn't exist :-)
+    servoPins[pin] = new Servo();
+    servoPins[pin] -> attach(pin);
+
+#ifdef DEBUG
+  Serial.print("Body: created servo ");
+  Serial.print(pin);
+  Serial.print(" at memory location ");
+  Serial.println(int(servoPins[pin]));
+#endif
+  }
+
+  //and finally, write the angle to the servo
+  servoPins[pin] -> write(angle);
 }
 
 // Write Digital Pin
@@ -173,7 +198,10 @@ void writeDPin()
 
 #ifdef DEBUG
   // Print a message to let the control know of our intentions:
-  Serial.print("\nBody: digital "+pin" to "+(hl ? "HIGH" : "LOW"));
+  Serial.print("\nBody: digital ");
+  Serial.print(pin);
+  Serial.print(" to ");
+  Serial.println((hl ? "HIGH" : "LOW"));
 #endif
 
   pin = ASCIItoInt(pin); // Convert ASCCI to a 0-13 value
@@ -201,7 +229,10 @@ void writeAPin()
 
 #ifdef DEBUG
   // Print a message to let the control know of our intentions:
-  Serial.println("\nBody: analog "+pin+" to "+value);
+  Serial.print("\nBody: analog ");
+  Serial.print(pin);
+  Serial.print(" to ");
+  Serial.println(value);
 #endif
 
   pin = ASCIItoInt(pin); // Convert ASCCI to a 0-13 value
@@ -232,7 +263,10 @@ void readDPin()
 
 //print a debug message
 #ifdef DEBUG
-  Serial.println("\nBody: dRead "+pin+" -> "+value);
+  Serial.print("\nBody: dRead ");
+  Serial.print(pin);
+  Serial.print(" -> ");
+  Serial.println(value);
 #endif
 }
 
@@ -257,7 +291,10 @@ void readAPin()
 
   //debug
 #ifdef DEBUG
-  Serial.println("\nBody: aRead "+pin+" -> "+value);
+  Serial.print("\nBody: aRead ");
+  Serial.print(pin);
+  Serial.print(" -> ");
+  Serial.println(value);
 #endif
 }
 
