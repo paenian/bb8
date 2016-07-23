@@ -74,9 +74,6 @@ Distributed as-is; no warranty is given.
 Servo *servoPins[NUMPINS];  	//array of servo pins - to keep
 				//track of them quickly.
 
-char ReceiverChar = 'B';	//read messages with a B
-char SendChar = 'T';		//send messages $T
-
 void setup()
 {
   // Initialize Serial Software Serial port. Make sure the baud
@@ -106,7 +103,7 @@ void loop()
     if(c == '$'){  //commands start with a $ sign
       while(Serial.available() < 1); //wait for the next character
       c = Serial.read();
-      if( c == ReceiverChar){  //the code matches
+      if( c == BODYCHAR){  //the code matches
         while(Serial.available() < 1);  //wait for the next character
 	c = Serial.read(); //finally we get the command
         switch (c){
@@ -222,22 +219,22 @@ void writeAPin()
   while (Serial.available() < 4)
     ; // Wait for pin and three value numbers to be received
   char pin = Serial.read(); // Read in the pin number
-  int value = ASCIItoInt(Serial.read()) * 100; // Convert next three
-  value += ASCIItoInt(Serial.read()) * 10;     // chars to a 3-digit
-  value += ASCIItoInt(Serial.read());          // number.
-  value = constrain(value, 0, 255); // Constrain that number.
+  int val = ASCIItoInt(Serial.read()) * 100; // Convert next three
+  val += ASCIItoInt(Serial.read()) * 10;     // chars to a 3-digit
+  val += ASCIItoInt(Serial.read());          // number.
+  val = constrain(val, 0, 255); // Constrain that number.
 
 #ifdef DEBUG
   // Print a message to let the control know of our intentions:
   Serial.print("\nBody: analog ");
   Serial.print(pin);
   Serial.print(" to ");
-  Serial.println(value);
+  Serial.println(val);
 #endif
 
   pin = ASCIItoInt(pin); // Convert ASCCI to a 0-13 value
   pinMode(pin, OUTPUT); // Set pin as an OUTPUT
-  analogWrite(pin, value); // Write pin accordingly
+  analogWrite(pin, val); // Write pin accordingly
 }
 
 // Read Digital Pin
@@ -246,7 +243,7 @@ void writeAPin()
 // The Arduino will print the digital reading of the pin to Serial.
 void readDPin()
 {
-  int value = 0;
+  int val = 0;
 
   while (Serial.available() < 1); // Wait for pin # to be available.
 
@@ -255,10 +252,10 @@ void readDPin()
   pin = ASCIItoInt(pin); // Convert pin to 0-13 value
   pinMode(pin, INPUT); // Set as input
   
-  value = digitalRead(pin);
+  val = digitalRead(pin);
 
   //send the character
-  sendValue('D', value);
+  sendValue('D', val);
 
 
 //print a debug message
@@ -266,7 +263,7 @@ void readDPin()
   Serial.print("\nBody: dRead ");
   Serial.print(pin);
   Serial.print(" -> ");
-  Serial.println(value);
+  Serial.println(val);
 #endif
 }
 
@@ -276,7 +273,7 @@ void readDPin()
 // The Arduino will print the analog reading of the pin to Serial.
 void readAPin()
 {
-  int value = 0;
+  int val = 0;
 
   while (Serial.available() < 1)
     ; // Wait for pin # to be available
@@ -284,17 +281,17 @@ void readAPin()
 
   pin = ASCIItoInt(pin); // Convert pin to 0-6 value
 
-  value = analogRead(pin);
+  val = analogRead(pin);
 
   //send it back
-  sendValue('A', value);
+  sendValue('A', val);
 
   //debug
 #ifdef DEBUG
   Serial.print("\nBody: aRead ");
   Serial.print(pin);
   Serial.print(" -> ");
-  Serial.println(value);
+  Serial.println(val);
 #endif
 }
 
@@ -328,20 +325,20 @@ int ASCIItoInt(char c)
 
 // send a value back to the controller - called in any of the read
 //  functions.
-void sendValue(char label, int value){
-  Serial.print('$'+SendChar);
+void sendValue(char label, int val){
+  Serial.print('$'+CONTROLCHAR);
   Serial.print(label);
   if(label == 'A'){
-    Serial.print(pad(value, 4));
+    Serial.print(pad(val, 4));
   }else{
-    Serial.print(value);
+    Serial.print(val);
   }
 }
 
-String pad(int number, byte length){
+String pad(int number, byte len){
   String ret = "";
   int curMax = 10;
-  for(byte i=1; i<length; i++){
+  for(byte i=1; i<len; i++){
     if(number < curMax)
       ret += "0";
 

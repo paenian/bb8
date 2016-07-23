@@ -19,6 +19,9 @@
  *  the body gets a monstrosity.
 */
 
+#define CONTROLCHAR 'T'
+#define BODYCHAR 'B'
+#define HEADCHAR 'H'
 
 /*
  * Desired pins
@@ -76,6 +79,8 @@
  *  What's left:
  *   No more PWM!  Plenty of analog in, D4...
 */
+#define BODY_LR_SPEED_PIN 11
+#define BODY_LR_DIR_PIN 13
 
 /*
 *** Head Pins

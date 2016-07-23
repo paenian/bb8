@@ -51,10 +51,6 @@ Distributed as-is; no warranty is given.
 #define DEBUG 1
 
 
-char SendChar = 'B';	//messages with $B go to the body
-char ReceiverChar = 'T';		//messages with $T are for us
-
-
 uint8_t pot_slop = 5;	//don't send a message unless the pot
 			//reading is + or - this value
 
@@ -64,10 +60,12 @@ uint8_t pot_slop = 5;	//don't send a message unless the pot
 // when they're read.
 // 0 is full reverse, 123 full stop, 255 full forward
 uint8_t bodyPot[3] = {127, 127, 127}; //the third is actually binary here, to spin the body.
+uint8_t bodyAtt[3] = {127, 127, 127}; //the current body attitude
 uint8_t bodyPotZero[3] = {127,127,127}; //everything perfectly centered
 
 
 uint8_t headPot[3] = {127,127,90}; //the third is angle, for turning the head
+uint8_t headAtt[3] = {127, 127, 90}; //the current head attitude
 uint8_t headPotZero[3] = {127, 127, 90}; //perfectly centered
 
 
@@ -91,6 +89,7 @@ void readBodyPot(uint8_t numSamples){
   if(digitalRead(CONTROL_BODY_SPIN_LEFT_DPIN) == LOW){
     bodyPot[2] -= 127;
   }
+
   if(digitalRead(CONTROL_BODY_SPIN_RIGHT_DPIN) == LOW){
     bodyPot[2] += 127;
   }
@@ -164,6 +163,65 @@ void readHeadPot(uint8_t numSamples){
   headPot[2] += constrain(headPotZero[2] - 90, 0, 255);
 }
 
+bool arraysEqual(uint8_t pot[], uint8_t att[]){
+  //first see if the controls have changed
+  for(uint8_t i=0; i<2; i++){
+    if((att[i] < pot[i]+pot_slop) && (att[i] > pot[i]-pot_slop)){
+      return true; 
+    }
+  }
+
+  return false;
+}
+
+//send an analog value to a pin
+void sendAPin(char dest, uint8_t pin, uint8_t val){
+  Serial.print('$');
+  Serial.print(dest);
+  Serial.print('W');
+  Serial.print(pad(val, 4));
+}
+
+//send a digital value to a pin
+void sendDPin(char dest, uint8_t pin, uint8_t val){
+  Serial.print('$');
+  Serial.print(dest);
+  Serial.print('D');
+  Serial.print(val);
+}
+
+//send speed and direction in a single function
+void sendSpeedDir(char dest, uint8_t speed_pin, uint8_t dir_pin, uint8_t val){
+  if( val >= 127 ){
+    //send the speed first
+    sendAPin(dest, speed_pin, map(val, 127, 255, 0, 255));
+
+    //and then the direction
+    sendDPin(dest, dir_pin, 1);
+  }else{
+    //speed first again
+    sendAPin(dest, speed_pin, map(val, 0, 126, 0, 255));
+
+    //and then the direction
+    sendDPin(dest, dir_pin, 0);
+  }
+}
+
+////////Handlers for position changes
+void handleBodyPot(){
+  if(arraysEqual(bodyPot, bodyAtt)){
+    return;
+  }
+
+  //send the x
+  bodyAtt[0] = bodyPot[0];
+  sendSpeedDir(BODYCHAR, BODY_LR_SPEED_PIN, BODY_LR_DIR_PIN, bodyAtt[0]);
+
+  //send the y
+
+  //send the spin
+}
+
 ////////BATTERY AND SHUTDOWN
 // Used to safe the robot if the controller battery is low.
 // The controller monitors its battery, and shuts down the body and
@@ -188,38 +246,11 @@ void shutdownHead(){
 
 void shutdownController(){
   //disconnect the battery so it doesn't get too low
+
+  //first shut down the head and body - don't want it to escape.
+  //todo: implement a heartbeat - make sure the body doesn't go rogue on signal loss!
 }
 
-
-
-
-
-
-// write servo pin
-// send S or s to enter
-// then pin #
-// then 3 digit angle
-void writeSPin()
-{
-  while (Serial.available() < 4);	//this just waits til the digits come in
-
-  char pin  = ASCIItoInt(Serial.read());
-  int angle = ASCIItoInt(Serial.read()) * 100 +
-              ASCIItoInt(Serial.read()) * 10 +
-	      ASCIItoInt(Serial.read());
-
-  angle = constrain(angle, 0, 180);
-
-#ifdef DEBUG
-  Serial.print("Body: servo ");
-  Serial.print(pin);
-  Serial.print(" to <");
-  Serial.println(angle);
-#endif
-
-  //todo: set this up.
-
-}
 
 // Write Digital Pin
 // Send a 'd' or 'D' to enter.
@@ -278,64 +309,6 @@ void writeAPin()
   analogWrite(pin, value); // Write pin accordingly
 }
 
-// Read Digital Pin
-// Send 'r' or 'R' to enter
-// Then send a digital pin # to be read
-// The Arduino will print the digital reading of the pin to Serial.
-void readDPin()
-{
-  int value = 0;
-
-  while (Serial.available() < 1); // Wait for pin # to be available.
-
-  char pin = Serial.read(); // Read in the pin value
-
-  pin = ASCIItoInt(pin); // Convert pin to 0-13 value
-  pinMode(pin, INPUT); // Set as input
-  
-  value = digitalRead(pin);
-
-  //send the character
-  sendValue('D', value);
-
-
-//print a debug message
-#ifdef DEBUG
-  Serial.print("\nBody: dRead ");
-  Serial.print(pin);
-  Serial.print(" -> ");
-  Serial.println(value);
-#endif
-}
-
-// Read Analog Pin
-// Send 'a' or 'A' to enter
-// Then send an analog pin # to be read.
-// The Arduino will print the analog reading of the pin to Serial.
-void readAPin()
-{
-  int value = 0;
-
-  while (Serial.available() < 1)
-    ; // Wait for pin # to be available
-  char pin = Serial.read(); // read in the pin value
-
-  pin = ASCIItoInt(pin); // Convert pin to 0-6 value
-
-  value = analogRead(pin);
-
-  //send it back
-  sendValue('A', value);
-
-  //debug
-#ifdef DEBUG
-  Serial.println("\nBody: aRead ");
-  Serial.print(pin);
-  Serial.print(" -> ");
-  Serial.println(value);
-#endif
-}
-
 // ASCIItoHL
 // Helper function to turn an ASCII value into either HIGH or LOW
 int ASCIItoHL(char c)
@@ -364,10 +337,21 @@ int ASCIItoInt(char c)
     return -1;
 }
 
+//todo: test this function :-)
+char InttoASCII(int i){
+  if((i >= 0) && (i <= 9)){
+    return (char)(i+0x30);
+  }
+  else if ((i >= 10) && (i <= 15))
+    return (char)(i + 0x37); // Minus 0x41 plus 0x0A
+  else
+    return -1;  
+}
+
 // send a value back to the controller - called in any of the read
 //  functions.
-void sendValue(char label, int value){
-  Serial.print('$'+SendChar);
+void sendValue(char sendChar, char label, int value){
+  Serial.print('$'+sendChar);
   Serial.print(label);
   if(label == 'A'){
     Serial.print(pad(value, 4));
@@ -419,10 +403,7 @@ void printMenu()
 #endif
 }
 
-void handleBodyPots(){  //body has spin left and right buttons, too
-}
-
-void handleHeadPots(){ //xya joystick
+void handleHeadPot(){ //xya joystick
 }
 
 void handleButtonArray(){ //funny noises in a big fancy grid
@@ -452,10 +433,12 @@ void loop()
   //check the battery voltage - shutdown if it's too low.
   checkBatteryForShutdown();
 
-  
+  readBodyPot();
+  readHeadPot();
+//  readButtonArray();
 
-  handleBodyPots(); //this also handles the spin buttons
-  handleHeadPots(); //xya joystick
+  handleBodyPot(); //this also handles the spin buttons
+  handleHeadPot(); //xya joystick
   handleButtonArray();  //funny noises in a big fancy grid
 
 #ifdef DEBUG

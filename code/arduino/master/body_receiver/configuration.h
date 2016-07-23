@@ -17,10 +17,13 @@
  * All three will share battery management code; the monitoring circuit varies
  *  slightly, in that the REMOTE and HEAD will have small LIPO batteries, but
  *  the body gets a monstrosity.
+*/
 
+#define CONTROLCHAR 'T'
+#define BODYCHAR 'B'
+#define HEADCHAR 'H'
 
-
-
+/*
  * Desired pins
  *  Remote Pins
  *   body l/r - analog input - a2
@@ -36,14 +39,27 @@
  *   keypad - I2C SDA - A4
  *    - Could also use software I2C to free up these analog pins.
 
- *   software serial TX - xbee - D7 
- *   software serial RX - xbee - D8
+ *   software serial TX - xbee - D7 ####using hardware serial for now
+ *   software serial RX - xbee - D8 ####using hardware serial for now
 
  *  what's left:
  *    Digital pins... but the keypad's got 16 buttons, not sure we need anything
  *    more.
+*/
+////// These are all INPUT pins used on the CONTROLLER
+////// The BODY module has its own output pins.
+#define CONTROL_BODY_POT_LR_APIN 2
+#define CONTROL_BODY_POT_FR_APIN 3
+#define CONTROL_BODY_SPIN_LEFT_DPIN 12
+#define CONTROL_BODY_SPIN_RIGHT_DPIN 13
+#define CONTROL_HEAD_POT_LR_APIN 6
+#define CONTROL_HEAD_POT_FR_APIN 7
+#define CONTROL_HEAD_POT_A_APIN 0
+#define CONTROL_BATTERY_MONITOR_APIN 1
+#define CONTROL_BATTERY_SHUTDOWN_DPIN 4
 
- 
+
+/*
 *** Body Pins
  *  body l/r - PWM output - D11 - connect to servo(s)
  *  body l/r - digital output - D13 - direction
@@ -62,7 +78,11 @@
 
  *  What's left:
  *   No more PWM!  Plenty of analog in, D4...
+*/
+#define BODY_LR_SPEED_PIN D11
+#define BODY_LR_DIR_PIN D13
 
+/*
 *** Head Pins
  *  WaveShield - SPI - D11
  *  WaveShield - SPI - D12
