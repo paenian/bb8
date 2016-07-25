@@ -11,6 +11,9 @@ num_petals = 6;
 petal_thick = 5;
 petal_attach_rad = cap_rad - wall;
 
+waist_thick = 30;
+waist_overlap = 3; //this is in degrees
+
 
 part = 10;
 angle = 90+30;
@@ -41,6 +44,8 @@ if(part == 4)
     mirror([0,0,flip]) motor_gear();
 if(part == 5)
     head_cage();
+if(part == 6)
+    waist_band();
 
 if(part == 10)
     assembled();
@@ -105,14 +110,16 @@ bus_screw_sep = 20;
 %translate([0,0,-200]) cube([50,50,50]);
 
 module assembled(){
-    for(i=[0,1]) mirror([0,0,i])
+    *for(i=[0,1]) mirror([0,0,i])
         translate([0,0,rad+50]) capcap(textured=textured);
     
-    for(i=[0,1]) mirror([0,0,i])
+    *for(i=[0,1]) mirror([0,0,i])
         translate([0,0,rad-cap_height]) cap(textured=textured);
     
-    for(i=[180/num_petals:360/num_petals:180-1])
+    for(i=[180/num_petals:360/num_petals:180-1]){
         petal(angle=i, textured=textured);
+        translate([0,0,i/30]) waist_band(angle=(i+180/num_petals), textured=textured);
+    }
     
     //this is drawn in by the motor carrier
     *for(i=[0,1]) mirror([0,0,i]){
@@ -122,7 +129,7 @@ module assembled(){
         translate([motor_offset,0,rad-cap_height]) motor_gear();
     }
     
-    for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
+    *for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
         motor_carrier();
     
     for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
@@ -303,6 +310,67 @@ module motor_carrier(){
         
         //mount two flanged bearings
         cylinder(r=22/2+slop, h=motor_carrier_thick*3, center=true);
+    }
+}
+
+//holes for mounting the panels to the waist band
+module waist_holes(screw_rad = m3_rad){
+    angle = 90;
+    vert_hole_sep = waist_thick/3*2;
+    hole_sep = 360/num_petals-waist_overlap;
+    
+    for(i=[180/num_petals:360/num_petals:360-1]) rotate([0,0,i])
+        rotate([angle,0,0]) {
+            #for(j=[-hole_sep/2, hole_sep/2]) rotate([0,j,0]) translate([0,0,rad-wall*2]) {
+                cylinder(r=screw_rad+slop, h=wall*3);
+                translate([0,0,wall*2-petal_thick]) cylinder(r1=screw_rad+slop, r2=screw_rad+wall, h=wall);
+            }
+            
+            #cylinder(r=screw_rad+slop, h=wall*3);
+            translate([0,0,wall*2-petal_thick]) cylinder(r1=screw_rad+slop, r2=screw_rad+wall, h=wall);
+        }
+}
+
+module waist_band(angle = 0, textured = false){
+    intersection(){
+        rotate([0,0,angle])
+        difference(){
+            intersection(){
+                cube([rad*3,rad*3,waist_thick], center=true);
+        
+                //this is the space that they'll occupy.
+                difference(){
+                    sphere(r=rad - petal_thick-slop*2);
+                    sphere(r=rad - petal_thick - wall);
+                }
+            }
+        
+            //cut it into a slice
+            for(i=[1,-1]) rotate([0,0,(waist_overlap+90+180/(num_petals) - slop)*i]) translate([0,-rad,-rad-.5]) cube([rad*2, rad*2, rad*2+1]);            
+            
+            //cut off the back on one side
+            rotate([0,0,(-waist_overlap-slop+90+180/(num_petals) - slop)]) intersection(){
+                translate([0,-rad,-rad-.5]) cube([rad*2, rad*2, rad*2+1]);
+                sphere(r=rad-petal_thick-wall/2+slop*2);
+            }
+            
+            //and the front of the other
+            rotate([0,0,(-waist_overlap-slop+90+180/(num_petals) - slop)*-1]) intersection(){
+                translate([0,-rad,-rad-.5]) cube([rad*2, rad*2, rad*2+1]);
+                difference(){
+                    sphere(r=rad-petal_thick+slop*2);
+                    sphere(r=rad-petal_thick-wall/2-slop*2);
+                }
+            }
+            
+                
+            //mounting holes
+            rotate([0,0,180/num_petals]) waist_holes(angle = angle);
+        }
+        
+        if(textured == true){
+            bb8_texture_shallow();
+        }
     }
 }
 

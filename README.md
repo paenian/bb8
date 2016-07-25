@@ -8,6 +8,9 @@ The new plan is to print endcaps, then use a thermoformer to create petals conne
 
 The hamster is now integrated into the shell, as it's an axle-drive bot; current 
 
+##Current State
+Controller is on its way - it can read all the potentiometers for body and head movement, but I need to add a couple buttons or a rocker for body spin.
+
 ## Old shell
 - Old design is a rombicuboctahedron, which has 18 square faces and 8 triangular faces.  
 - Each square face, when oriented for printing, fits in a 180x180x180mm cube.
