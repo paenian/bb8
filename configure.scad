@@ -29,6 +29,8 @@ m3_nut_height = 2.4;
 m3_rad = 3/2+slop;
 m3_cap_rad = 3.25;
 m3_cap_height = 2;
+m3_square_nut_rad = 6*sqrt(2)/2;
+m3_sq_nut_rad = m3_square_nut_rad;
 
 m4_nut_rad = 7*sqrt(2)/2+slop;
 m4_nut_height = 3;

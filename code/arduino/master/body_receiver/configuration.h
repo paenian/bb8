@@ -62,7 +62,6 @@
 /*
 *** Body Pins
  *  body l/r - PWM output - D11 - connect to servo(s)
- *  body l/r - digital output - D13 - direction
  *  body f/r - PWM output - D10 - connect to dagu 4 motor
  *  body f/r - digital output - D12 - direction
  *  body spin l/r - PWM output - D3
@@ -79,9 +78,11 @@
  *  What's left:
  *   No more PWM!  Plenty of analog in, D4...
 */
-#define BODY_LR_SPEED_PIN D11
-#define BODY_LR_DIR_PIN D13
-
+#define BODY_LR_ANGLE_PIN 11
+#define BODY_FR_SPEED_PIN 10
+#define BODY_FR_DIR_PIN 12
+#define BODY_SPIN_SPEED_PIN 3
+#define BODY_SPIN_DIR_PIN 2
 /*
 *** Head Pins
  *  WaveShield - SPI - D11

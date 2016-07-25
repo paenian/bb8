@@ -55,21 +55,30 @@
 #define CONTROL_HEAD_POT_LR_APIN 6
 #define CONTROL_HEAD_POT_FR_APIN 7
 #define CONTROL_HEAD_POT_A_APIN 0
+
+
 #define CONTROL_BATTERY_MONITOR_APIN 1
-#define CONTROL_BATTERY_SHUTDOWN_DPIN 4
+
+#define CONTROL_ARRAY_SCL 5
+#define CONTROL_ARRAY_SDA 4
+
+
+
+//Don't think this is necessary - but we should add a real power switch.
+//#define CONTROL_BATTERY_SHUTDOWN_DPIN 4
+
 
 
 /*
 *** Body Pins
  *  body l/r - PWM output - D11 - connect to servo(s)
- *  body l/r - digital output - D13 - direction
  *  body f/r - PWM output - D10 - connect to dagu 4 motor
  *  body f/r - digital output - D12 - direction
  *  body spin l/r - PWM output - D3
  *  body spin l/r - digital output - D2
  *  Head l/r angle - pwm output - D5 - servo
  *  Head f/r angle - pwm output - D6 - servo
- *  Head spin - pwm output - D9 - continuous servo
+ *  Head spin - pwm output - D9 - continuous servo?  Or do LR?
 
  *  software serial TX - xbee - D7
  *  software serial RX - xbee - D8
@@ -79,8 +88,15 @@
  *  What's left:
  *   No more PWM!  Plenty of analog in, D4...
 */
-#define BODY_LR_SPEED_PIN 11
-#define BODY_LR_DIR_PIN 13
+#define BODY_LR_ANGLE_PIN 11
+#define BODY_FR_SPEED_PIN 10
+#define BODY_FR_DIR_PIN 12
+#define BODY_SPIN_SPEED_PIN 3
+#define BODY_SPIN_DIR_PIN 2
+
+#define HEAD_LR_ANGLE_PIN 5
+#define HEAD_FR_ANGLE_PIN 6
+#define HEAD_SPIN_ANGLE_PIN 9
 
 /*
 *** Head Pins

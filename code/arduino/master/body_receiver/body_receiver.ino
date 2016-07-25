@@ -74,6 +74,12 @@ Distributed as-is; no warranty is given.
 Servo *servoPins[NUMPINS];  	//array of servo pins - to keep
 				//track of them quickly.
 
+
+//shutdown after 10 seconds of no signal
+#define TIMEOUT 10000
+int lastHeartbeat;
+
+
 void setup()
 {
   // Initialize Serial Software Serial port. Make sure the baud
@@ -88,12 +94,16 @@ void setup()
 #ifdef DEBUG
   printMenu(); // Print a helpful menu
 #endif
+
+  lastHeartbeat = millis();
 }
 
 void loop()
-{
-  //TODO: check battery voltage, shut down if it's too low.
+{ 
+  //TODO: check battery voltage, shut down if it's too low
 
+  //make sure we haven't timed out
+  checkHeartbeat();
 
   // In loop() we continously check to see if a command has been
   //  received.
@@ -101,15 +111,16 @@ void loop()
   {
     char c = Serial.read();
     if(c == '$'){  //commands start with a $ sign
-      while(Serial.available() < 1); //wait for the next character
+      waitForSerial(1); //wait for the next character
       c = Serial.read();
       if( c == BODYCHAR){  //the code matches
-        while(Serial.available() < 1);  //wait for the next character
-	c = Serial.read(); //finally we get the command
+        waitForSerial(1);  //wait for the next character
+	      
+	      c = Serial.read(); //finally we get the command
         switch (c){
           case 'w':      // If received 'w'
           case 'W':      // or 'W'
-            writeAPin(); // Write analog pin
+            writePWMPin(); // Write analog pin
           break;
           case 'd':      // If received 'd'
           case 'D':      // or 'D'
@@ -133,13 +144,54 @@ void loop()
   }
 }
 
+//turn off all the pins
+void Stop(){
+#ifdef DEBUG
+  Serial.println("Body: Stopping All Motors");
+#endif
+  
+  for(uint8_t i = 0; i<NUMPINS; i++){
+    digitalWrite(i, LOW);
+  }
+
+#ifdef DEBUG
+  Serial.println("Body: Stopped All Motors");
+#endif
+}
+
+void checkHeartbeat(){
+  if(millis() > lastHeartbeat + TIMEOUT){
+    Stop();
+  }
+}
+
+//this waits for ONE character - BLOCKING
+boolean waitForSerial(){
+  do{
+    checkHeartbeat();
+  }while(Serial.available() < 1);
+
+  //reset on each char recieved
+  lastHeartbeat = millis();
+  return true;
+}
+
+//this waits for <chars> number of characters - BLOCKING - to be available on the serial bus
+//while making sure we don't timeout from lack of communication.
+boolean waitForSerial(uint8_t chars){
+  while(Serial.available() < chars){
+    waitForSerial();
+  }
+  return true;
+}
+
 // write servo pin
 // send S or s to enter
 // then pin #
 // then 3 digit angle
 void writeSPin()
 {
-  while (Serial.available() < 4);	//this just waits til the digits come in
+  while (waitForSerial(4));	//this just waits til the digits come in
 
   char pin  = ASCIItoInt(Serial.read());
   int angle = ASCIItoInt(Serial.read()) * 100 +
@@ -188,8 +240,7 @@ void writeSPin()
 //   Use h, H, or 1 for HIGH. Use l, L, or 0 for LOW
 void writeDPin()
 {
-  while (Serial.available() < 2)
-    ; // Wait for pin and value to become available
+  waitForSerial(2); // Wait for pin and value to become available
   char pin = Serial.read();
   char hl = ASCIItoHL(Serial.read());
 
@@ -214,10 +265,10 @@ void writeDPin()
 //    a non-analog output pin)
 // Then send a 3-digit analog value.
 //   Must send all 3 digits, so use leading zeros if necessary.
-void writeAPin()
+void writePWMPin()
 {
-  while (Serial.available() < 4)
-    ; // Wait for pin and three value numbers to be received
+  waitForSerial(4); // Wait for pin and three value numbers to be received
+  
   char pin = Serial.read(); // Read in the pin number
   int val = ASCIItoInt(Serial.read()) * 100; // Convert next three
   val += ASCIItoInt(Serial.read()) * 10;     // chars to a 3-digit
@@ -245,7 +296,7 @@ void readDPin()
 {
   int val = 0;
 
-  while (Serial.available() < 1); // Wait for pin # to be available.
+  waitForSerial(1); // Wait for pin # to be available.
 
   char pin = Serial.read(); // Read in the pin value
 
@@ -275,8 +326,8 @@ void readAPin()
 {
   int val = 0;
 
-  while (Serial.available() < 1)
-    ; // Wait for pin # to be available
+  waitForSerial(1); // Wait for pin # to be available
+  
   char pin = Serial.read(); // read in the pin value
 
   pin = ASCIItoInt(pin); // Convert pin to 0-6 value

@@ -1,3 +1,4 @@
+
 /*****************************************************************
 This is the Control side of a remote control using a modified
 version of the XBEE remote control code.
@@ -44,6 +45,8 @@ Distributed as-is; no warranty is given.
 // Trying it using hardware serial instead to avoid conflict with
 //  the servo library.
 #include "configuration.h"
+//#include <Adafruit_Trellis.h>
+
 
 //comment this out to turn serial debugging off.
 //With it on, you can monitor the debugging with an xbee over the
@@ -51,29 +54,29 @@ Distributed as-is; no warranty is given.
 #define DEBUG 1
 
 
-uint8_t pot_slop = 5;	//don't send a message unless the pot
-			//reading is + or - this value
+uint8_t pot_slop = 12;	//don't send a message unless the pot
+			//reading is + or - this value.  Pots are 10 bit, so 1024 values.
 
 ////////Pin Defines are in the configuration.h!
 
 ////////Potentiometer Variables - these are stored as bytes, converted
 // when they're read.
 // 0 is full reverse, 123 full stop, 255 full forward
-uint8_t bodyPot[3] = {127, 127, 127}; //the third is actually binary here, to spin the body.
-uint8_t bodyAtt[3] = {127, 127, 127}; //the current body attitude
-uint8_t bodyPotZero[3] = {127,127,127}; //everything perfectly centered
+int bodyPot[3] = {900, 512, 512}; //the third is actually binary here, to spin the body.
+int bodyAtt[3] = {900, 512, 512}; //the current body attitude
+int bodyPotZero[3] = {900, 512, 512}; //everything perfectly centered
 
 
-uint8_t headPot[3] = {127,127,90}; //the third is angle, for turning the head
-uint8_t headAtt[3] = {127, 127, 90}; //the current head attitude
-uint8_t headPotZero[3] = {127, 127, 90}; //perfectly centered
+int headPot[3] = {900,900,900}; //the third is angle, for turning the head; it's in tens of degrees.
+int headAtt[3] = {900, 900, 900}; //the current head attitude
+int headPotZero[3] = {900, 900, 900}; //perfectly centered
 
 
 ////////Battery Voltage
 // We also track battery voltage for the body, head and controller itself.
-uint8_t controllerVoltage = 0;
-uint8_t bodyVoltage = 0;
-uint8_t headVoltage = 0;
+int controllerVoltage = 0;
+int bodyVoltage = 0;
+int headVoltage = 0;
 
 #define MIN_VOLTAGE 2.9
 
@@ -84,31 +87,50 @@ void readBodyPot(uint8_t numSamples){
   int y=0;
 
   //Spin?
-  bodyPot[2] = 127;
+  bodyPot[2] = 512;
   
   if(digitalRead(CONTROL_BODY_SPIN_LEFT_DPIN) == LOW){
-    bodyPot[2] -= 127;
+    bodyPot[2] -= 512;
   }
 
   if(digitalRead(CONTROL_BODY_SPIN_RIGHT_DPIN) == LOW){
-    bodyPot[2] += 127;
+    bodyPot[2] += 512;
   }
     
 
   //XY movement
   for(uint8_t i=0; i<numSamples; i++){
+    analogRead(CONTROL_BODY_POT_LR_APIN);
     x += analogRead(CONTROL_BODY_POT_LR_APIN);
+    analogRead(CONTROL_BODY_POT_FR_APIN);
     y += analogRead(CONTROL_BODY_POT_FR_APIN);
+#ifdef DEBUG
+  Serial.println("readBodyPot: Raw");
+  Serial.print("X: ");
+  Serial.println(x);
+  Serial.print("Y: ");
+  Serial.println(y);
+#endif
   }
 
   //cheap average
-  bodyPot[0] = map(x, 0, 1023*numSamples, 0, 255);
-  bodyPot[1] = map(y, 0, 1023*numSamples, 0, 255);
+  bodyPot[0] = map(x, 0, 1023*numSamples, 0, 1800);
+  bodyPot[1] = map(y, 0, 1023*numSamples, 0, 1024);
 
 
   //adjust to the true zero voltage of our pots
-  bodyPot[0] += constrain(bodyPotZero[0] - 127, 0, 255);
-  bodyPot[1] += constrain(bodyPotZero[1] - 127, 0, 255);
+  bodyPot[0] = constrain(bodyPot[0] + (bodyPotZero[0] - 900), 0, 1800);
+  bodyPot[1] = constrain(bodyPot[1] + (bodyPotZero[1] - 512), 0, 1024);
+
+#ifdef DEBUG
+  Serial.println("readBodyPot: Values");
+  Serial.print("{ ");
+  for(uint8_t i = 0; i<3; i++){
+    Serial.print(bodyPot[i]);
+    Serial.print("\t, ");
+  }
+  Serial.println("}");
+#endif
 }
 
 void readBodyPot(){
@@ -119,22 +141,24 @@ void initBodyPot(){
   pinMode(CONTROL_BODY_SPIN_LEFT_DPIN, INPUT_PULLUP);
   pinMode(CONTROL_BODY_SPIN_RIGHT_DPIN, INPUT_PULLUP);
 
-  for(uint8_t i=0; i<3; i++)
-    bodyPotZero[i] = 127;
+  for(uint8_t i=1; i<3; i++)
+    bodyPotZero[i] = 512;
+  bodyPotZero[0] = 900;
 
   readBodyPot(5);
 
-  memcpy( bodyPotZero, bodyPot, 3);
+  memcpy( bodyPotZero, bodyPot, sizeof(bodyPotZero));
+  memcpy( bodyAtt, bodyPot, sizeof(bodyAtt));
 }
 
 void initHeadPot(){
-  for(uint8_t i=0; i<2; i++)
-    headPotZero[i] = 127;
-  headPotZero[2] = 90;
-  
+  for(uint8_t i=0; i<3; i++)
+    headPotZero[i] = 900;
+
   readHeadPot(5);
 
-  memcpy( headPotZero, headPot, 3);
+  memcpy( headPotZero, headPot, sizeof(headPotZero));
+  memcpy( headAtt, headPot, sizeof(headAtt));
 }
 
 void readHeadPot(){
@@ -153,74 +177,155 @@ void readHeadPot(uint8_t numSamples){
   }
 
   //cheap way to calculate the average
-  headPot[0] = map(x, 0, 1023*numSamples, 0, 255);
-  headPot[1] = map(y, 0, 1023*numSamples, 0, 255);
-  headPot[2] = map(a, 0, 1023*numSamples, 0, 180);
+  headPot[0] = map(x, 0, 1023*numSamples, 0, 1800);
+  headPot[1] = map(y, 0, 1023*numSamples, 0, 1800);
+  headPot[2] = map(a, 0, 1023*numSamples, 0, 1800);
 
   //account for the zero point
-  headPot[0] += constrain(headPotZero[0] - 127, 0, 255);
-  headPot[1] += constrain(headPotZero[1] - 127, 0, 255);
-  headPot[2] += constrain(headPotZero[2] - 90, 0, 255);
+  headPot[0] = constrain(headPot[0] + (headPotZero[0] - 900), 0, 1800);
+  headPot[1] = constrain(headPot[1] + (headPotZero[1] - 900), 0, 1800);
+  headPot[2] = constrain(headPot[2] + (headPotZero[2] - 900), 0, 1800);
 }
 
-bool arraysEqual(uint8_t pot[], uint8_t att[]){
+void readButtonArray(){
+  
+}
+
+bool arraysDifferent(int pot[], int att[]){
+  #ifdef DEBUG
+  Serial.println("ArraysDifferent: Values");
+  Serial.print("{ ");
+  for(uint8_t i = 0; i<3; i++){
+    Serial.print(pot[i]);
+    Serial.print("\t, ");
+  }
+  Serial.println("}");
+
+    Serial.print("{ ");
+  for(uint8_t i = 0; i<3; i++){
+    Serial.print(att[i]);
+    Serial.print("\t, ");
+  }
+  Serial.println("}");
+  
+#endif
+
   //first see if the controls have changed
   for(uint8_t i=0; i<2; i++){
-    if((att[i] < pot[i]+pot_slop) && (att[i] > pot[i]-pot_slop)){
+    if((att[i] > pot[i]+pot_slop) || (att[i] < pot[i]-pot_slop)){
       return true; 
     }
   }
+
+#ifdef DEBUG
+  Serial.println("ArraysDifferent: returning false");
+#endif
 
   return false;
 }
 
 //send an analog value to a pin
-void sendAPin(char dest, uint8_t pin, uint8_t val){
+void sendPWMPin(char dest, uint8_t pin, int val){
   Serial.print('$');
   Serial.print(dest);
   Serial.print('W');
-  Serial.print(pad(val, 4));
+  Serial.print(InttoASCII(pin));
+  Serial.print(pad(val, 3));
 }
 
 //send a digital value to a pin
-void sendDPin(char dest, uint8_t pin, uint8_t val){
+void sendDPin(char dest, uint8_t pin, int val){
   Serial.print('$');
   Serial.print(dest);
   Serial.print('D');
+  Serial.print(InttoASCII(pin));
   Serial.print(val);
 }
 
+//send a servo angle to a pin
+void sendSPin(char dest, uint8_t pin, int val){
+  Serial.print('$');
+  Serial.print(dest);
+  Serial.print('S');
+  Serial.print(InttoASCII(pin));
+  Serial.print(pad(val, 3));
+}
+
 //send speed and direction in a single function
-void sendSpeedDir(char dest, uint8_t speed_pin, uint8_t dir_pin, uint8_t val){
-  if( val >= 127 ){
+void sendSpeedDir(char dest, uint8_t speed_pin, uint8_t dir_pin, int val){
+  if( val >= 512 ){
     //send the speed first
-    sendAPin(dest, speed_pin, map(val, 127, 255, 0, 255));
+    sendPWMPin(dest, speed_pin, map(val, 512, 1024, 0, 255));
 
     //and then the direction
     sendDPin(dest, dir_pin, 1);
   }else{
     //speed first again
-    sendAPin(dest, speed_pin, map(val, 0, 126, 0, 255));
+    sendPWMPin(dest, speed_pin, map(val, 0, 511, 0, 255));
 
     //and then the direction
     sendDPin(dest, dir_pin, 0);
   }
 }
 
+//send angle - which is 0 to 1800
+void sendAngle(char dest, uint8_t pin, int val){
+  sendSPin(dest, pin, map(val, 0, 1800, 0, 180));
+}
+
 ////////Handlers for position changes
 void handleBodyPot(){
-  if(arraysEqual(bodyPot, bodyAtt)){
+  if(!arraysDifferent(bodyPot, bodyAtt)){
     return;
   }
 
-  //send the x
-  bodyAtt[0] = bodyPot[0];
-  sendSpeedDir(BODYCHAR, BODY_LR_SPEED_PIN, BODY_LR_DIR_PIN, bodyAtt[0]);
+#ifdef DEBUG
+  Serial.println("handleBodyPot: Pot Changed");
+#endif
 
-  //send the y
+  //if any of them updated, great!  Update 'em all.
+  memcpy( bodyAtt, bodyPot, sizeof(bodyAtt));
+
+
+  //and then send them all, for good measure.
+  //send the y - forward or reverse speed
+  sendSpeedDir(BODYCHAR, BODY_FR_SPEED_PIN, BODY_FR_DIR_PIN, bodyAtt[1]);
+
+  //send the x - which is a tilt, so gets converted to an angle
+  sendAngle(BODYCHAR, BODY_LR_ANGLE_PIN, bodyAtt[0]);
 
   //send the spin
+  sendSpeedDir(BODYCHAR, BODY_SPIN_SPEED_PIN, BODY_SPIN_DIR_PIN, bodyAtt[2]);
 }
+
+void handleHeadPot(){ //xya joystick
+  if(!arraysDifferent(headPot, headAtt)){
+    return;
+  }
+
+#ifdef DEBUG
+  Serial.println("handleHeadPot: Pot Changed");
+#endif
+
+  //if any of them updated, great!  Update 'em all.
+  memcpy( headAtt, headPot, sizeof(headAtt));
+
+  //and then send them all, for good measure - this prevents creep,
+  //whithout evaluating the axes individually.
+
+  //send the x - which is a left/right tilt, so gets converted to an angle
+  sendAngle(BODYCHAR, HEAD_LR_ANGLE_PIN, bodyAtt[0]);
+  
+  //send the y - front or rear angle
+  sendAngle(BODYCHAR, HEAD_FR_ANGLE_PIN, bodyAtt[1]);
+
+  //send the spin
+  sendAngle(BODYCHAR, HEAD_SPIN_ANGLE_PIN, bodyAtt[2]);
+}
+
+void handleButtonArray(){ //funny noises in a big fancy grid
+}
+
 
 ////////BATTERY AND SHUTDOWN
 // Used to safe the robot if the controller battery is low.
@@ -249,64 +354,6 @@ void shutdownController(){
 
   //first shut down the head and body - don't want it to escape.
   //todo: implement a heartbeat - make sure the body doesn't go rogue on signal loss!
-}
-
-
-// Write Digital Pin
-// Send a 'd' or 'D' to enter.
-// Then send a pin #
-//   Use numbers for 0-9, and hex (a, b, c, or d) for 10-13
-// Then send a value for high or low
-//   Use h, H, or 1 for HIGH. Use l, L, or 0 for LOW
-void writeDPin()
-{
-  while (Serial.available() < 2)
-    ; // Wait for pin and value to become available
-  char pin = Serial.read();
-  char hl = ASCIItoHL(Serial.read());
-
-#ifdef DEBUG
-  // Print a message to let the control know of our intentions:
-  Serial.print("\nBody: digital ");
-  Serial.print(pin);
-  Serial.print(" to ");
-  Serial.println((hl ? "HIGH" : "LOW"));
-#endif
-
-  pin = ASCIItoInt(pin); // Convert ASCCI to a 0-13 value
-  pinMode(pin, OUTPUT); // Set pin as an OUTPUT
-  digitalWrite(pin, hl); // Write pin accordingly
-}
-
-// Write Analog Pin
-// Send 'w' or 'W' to enter
-// Then send a pin #
-//   Use numbers for 0-9, and hex (a, b, c, or d) for 10-13
-//   (it's not smart enough (but it could be) to error on
-//    a non-analog output pin)
-// Then send a 3-digit analog value.
-//   Must send all 3 digits, so use leading zeros if necessary.
-void writeAPin()
-{
-  while (Serial.available() < 4)
-    ; // Wait for pin and three value numbers to be received
-  char pin = Serial.read(); // Read in the pin number
-  int value = ASCIItoInt(Serial.read()) * 100; // Convert next three
-  value += ASCIItoInt(Serial.read()) * 10;     // chars to a 3-digit
-  value += ASCIItoInt(Serial.read());          // number.
-  value = constrain(value, 0, 255); // Constrain that number.
-
-#ifdef DEBUG
-  // Print a message to let the control know of our intentions:
-  Serial.print("\nBody: analog ");
-  Serial.print(pin);
-  Serial.print(" to ");
-  Serial.println(value);
-#endif
-
-  pin = ASCIItoInt(pin); // Convert ASCCI to a 0-13 value
-  pinMode(pin, OUTPUT); // Set pin as an OUTPUT
-  analogWrite(pin, value); // Write pin accordingly
 }
 
 // ASCIItoHL
@@ -403,12 +450,6 @@ void printMenu()
 #endif
 }
 
-void handleHeadPot(){ //xya joystick
-}
-
-void handleButtonArray(){ //funny noises in a big fancy grid
-}
-
 void setup()
 {
   // Initialize Serial Software Serial port. Make sure the baud
@@ -430,18 +471,22 @@ void setup()
 
 void loop()
 {
+#ifdef DEBUG
+  Serial.println("Loop Start"); // Print a helpful menu
+#endif
   //check the battery voltage - shutdown if it's too low.
   checkBatteryForShutdown();
 
   readBodyPot();
   readHeadPot();
-//  readButtonArray();
+  readButtonArray();
 
   handleBodyPot(); //this also handles the spin buttons
   handleHeadPot(); //xya joystick
   handleButtonArray();  //funny noises in a big fancy grid
 
 #ifdef DEBUG
-  delay(1000); //for debugging - to reduce the number of commands sent.
+  Serial.println("Loop End - pause 3 sec");
+  delay(3000); //for debugging - to reduce the number of commands sent.
 #endif
 }
