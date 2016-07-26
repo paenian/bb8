@@ -11,7 +11,7 @@ num_petals = 6;
 petal_thick = 5;
 petal_attach_rad = cap_rad - wall;
 
-waist_thick = 50;
+waist_thick = 75;
 waist_overlap = 3; //this is in degrees
 
 
@@ -326,7 +326,7 @@ module waist_holes(screw_rad = m3_rad+slop, nut_rad = m3_sq_nut_rad){
                 translate([0,0,wall*2-petal_thick]) cylinder(r1=screw_rad+slop, r2=screw_rad+wall, h=wall);
                 
                 //nut trap
-                #translate([0,0,-wall/2]) cylinder(r=nut_rad, h=wall, $fn=4);
+                #translate([0,0,-wall/4]) cylinder(r2=nut_rad, r1 = nut_rad+1, h=wall, $fn=4);
             }
         }
 }
