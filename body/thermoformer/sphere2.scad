@@ -397,6 +397,7 @@ module petal(angle = 0, textured = false){
             for(i=[1,-1]) rotate([0,0,(90+180/(num_petals) - slop)*i]) translate([0,-rad,-rad-.5]) cube([rad*2, rad*2, rad*2+1]);
         
             petal_holes();
+            rotate([180,0,0]) petal_holes();
             
             waist_holes();
         }
