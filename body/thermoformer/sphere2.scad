@@ -11,7 +11,7 @@ num_petals = 6;
 petal_thick = 5;
 petal_attach_rad = cap_rad - wall;
 
-waist_thick = 30;
+waist_thick = 50;
 waist_overlap = 3; //this is in degrees
 
 
@@ -118,7 +118,7 @@ module assembled(){
     
     for(i=[180/num_petals:360/num_petals:180-1]){
         petal(angle=i, textured=textured);
-        translate([0,0,i/30]) waist_band(angle=(i+180/num_petals), textured=textured);
+        translate([0,0,0]) waist_band(angle=(i+180/num_petals), textured=textured);
     }
     
     //this is drawn in by the motor carrier
@@ -314,25 +314,24 @@ module motor_carrier(){
 }
 
 //holes for mounting the panels to the waist band
-module waist_holes(screw_rad = m3_rad){
+module waist_holes(screw_rad = m3_rad+slop, nut_rad = m3_sq_nut_rad){
     angle = 90;
-    vert_hole_sep = waist_thick/3*2;
-    hole_sep = 360/num_petals-waist_overlap;
+    vert_hole_sep = 10;
+    hole_sep = 360/num_petals-waist_overlap*2;
     
     for(i=[180/num_petals:360/num_petals:360-1]) rotate([0,0,i])
         rotate([angle,0,0]) {
-            #for(j=[-hole_sep/2, hole_sep/2]) rotate([0,j,0]) translate([0,0,rad-wall*2]) {
+            for(j=[-hole_sep/2, 0, hole_sep/2]) for(k=[-vert_hole_sep/2, vert_hole_sep/2]) rotate([k,0,0]) rotate([0,j,0]) translate([0,0,rad-wall*2]) {
                 cylinder(r=screw_rad+slop, h=wall*3);
                 translate([0,0,wall*2-petal_thick]) cylinder(r1=screw_rad+slop, r2=screw_rad+wall, h=wall);
+                
+                //nut trap
+                #translate([0,0,-wall/2]) cylinder(r=nut_rad, h=wall, $fn=4);
             }
-            
-            #cylinder(r=screw_rad+slop, h=wall*3);
-            translate([0,0,wall*2-petal_thick]) cylinder(r1=screw_rad+slop, r2=screw_rad+wall, h=wall);
         }
 }
 
 module waist_band(angle = 0, textured = false){
-    intersection(){
         rotate([0,0,angle])
         difference(){
             intersection(){
@@ -367,11 +366,6 @@ module waist_band(angle = 0, textured = false){
             //mounting holes
             rotate([0,0,180/num_petals]) waist_holes(angle = angle);
         }
-        
-        if(textured == true){
-            bb8_texture_shallow();
-        }
-    }
 }
 
 //the holes for the petals - all of them.
@@ -403,6 +397,8 @@ module petal(angle = 0, textured = false){
             for(i=[1,-1]) rotate([0,0,(90+180/(num_petals) - slop)*i]) translate([0,-rad,-rad-.5]) cube([rad*2, rad*2, rad*2+1]);
         
             petal_holes();
+            
+            waist_holes();
         }
         
         if(textured == true){
