@@ -10,12 +10,13 @@ capcap_height = 15;
 num_petals = 6;
 petal_thick = 5;
 petal_attach_rad = cap_rad - wall;
+pad_rad = 25.4;
 
 waist_thick = 75;
 waist_overlap = 3; //this is in degrees
 
 
-part = 10;
+part = 1;
 angle = 90+30;
 textured = false;
 flip = 0;
@@ -35,7 +36,7 @@ if(part == 0)
 if(part == 11)
     mirror([0,1,0]) capcap(angle = angle, textured = textured);
 if(part == 1)
-    rotate([0,90,0]) petal(angle = angle, textured = textured);
+    rotate([0,90,0]) print_petal(angle = angle, textured = textured);
 if(part == 2)
     bus();
 if(part == 3)
@@ -410,6 +411,36 @@ module petal_holes(screw_rad = m3_rad){
         }
 }
 
+//this makes big pads for the end of the petal - making it much easier to print.
+module print_pads(height = 1){
+    width = 280;
+    center = (rad+rad/2)/2;
+    
+    //center pad
+    hull() translate([0,center,0]) {
+        translate([0,rad/4,0]) rotate([0,-90,0]) cylinder(r=pad_rad, h=1);
+        translate([0,width/2-pad_rad,0]) rotate([0,-90,0]) cube([pad_rad, pad_rad*2, 1], center=true);
+    }
+    
+    //end pads
+    for(i=[-1,1]) translate([0,center,(rad-cap_height)*i]) hull(){
+        translate([0,-rad/4,0]) rotate([0,-90,0]) cylinder(r=pad_rad, h=1);
+        translate([0,-width/2+pad_rad,0]) rotate([0,-90,0]) cube([pad_rad, pad_rad*2, 1], center=true);
+    }
+    
+    %translate([0,center,0]) cube([.1,width,600], center=true);
+    
+    echo(rad/2);
+}
+
+module print_petal(angle = 0, textured = false, pad_height = 1){
+    union(){
+        rotate([0,0,-angle+90+180/num_petals]) petal(angle = angle, textured = textured);
+        
+        print_pads(height = pad_height);
+    }
+}
+
 module petal(angle = 0, textured = false){
     intersection(){
         rotate([0,0,angle]) difference(){
@@ -422,7 +453,7 @@ module petal(angle = 0, textured = false){
             }
         
             //cut it into a slice
-            for(i=[1,-1]) rotate([0,0,(90+180/(num_petals) - slop)*i]) translate([0,-rad,-rad-.5]) cube([rad*2, rad*2, rad*2+1]);
+            for(i=[1,.999,-1]) rotate([0,0,(90+180/(num_petals))*i]) translate([0,-rad,-rad-.5]) cube([rad*2, rad*2, rad*2+1]);
         
             petal_holes();
             rotate([180,0,0]) petal_holes();
