@@ -96,16 +96,18 @@ gear_angle = atan(2*nTwist*gear_pitch/gear_thick);
 
 
 //head cage variables
-head_length = 150;
+head_length = 175;
 
 //bus variables
 motor_carrier_thick = 15;
 motor_carrier_inset = 10;
 motor_carrier_width = 100;
-bus_width = 70; //the width of the dagu 4 motor shield, basically.
+bus_width = 50;
 bus_length= rad - cap_height - head_length/2-motor_carrier_thick-motor_carrier_inset;
 bus_drop = 50;
 bus_screw_sep = 20;
+
+echo(bus_length);
 
 %translate([0,0,-200]) cube([50,50,50]);
 
@@ -116,7 +118,7 @@ module assembled(){
     *for(i=[0,1]) mirror([0,0,i])
         translate([0,0,rad-cap_height]) cap(textured=textured);
     
-    for(i=[180/num_petals:360/num_petals:180-1]){
+    for(i=[180/num_petals:360/num_petals:180-100]){
         petal(angle=i, textured=textured);
         translate([0,0,0]) waist_band(angle=(i+180/num_petals), textured=textured);
     }
@@ -129,7 +131,7 @@ module assembled(){
         translate([motor_offset,0,rad-cap_height]) motor_gear();
     }
     
-    *for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
+    for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
         motor_carrier();
     
     for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
@@ -141,7 +143,8 @@ module assembled(){
 //head cage is a delineator - it holds the space where the head will be mounted inside, and also provides a low, centered mount point for the tilt weights and gyroscope.
 module head_cage(){
     side_width = 20;
-    side_length = 100;
+    side_length = 110;
+    pendulum_drop = side_length+wall;
     
     //%cube([head_length,head_length,head_length], center=true);
     difference(){
@@ -161,13 +164,16 @@ module head_cage(){
             }
             
             //mount for the pendulum
-            translate([side_length,0,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_solid(height = side_width*2, solid=0, motor_rad=22/2+slop, screw_sep=15);
+            translate([pendulum_drop,-side_width/2,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_solid(height = side_width*1.5, solid=0, motor_rad=22/2+slop, screw_sep=15);
+            
+            //mount for the servo
+            rotate([0,30,0]) translate([pendulum_drop,0,0]) rotate([90,0,0]) rotate([0,0,-90]) servo_mount(height = side_width, solid=1);
             
             //base
             translate([0,0,0]) rotate([90,0,0]) difference(){
                 intersection(){
                     cylinder(r=side_length, h=side_width);
-                    cube([200,head_length,50], center=true);
+                    translate([50,0,0]) cube([200,head_length,50], center=true);
                 }
                 translate([0,0,-1]) cylinder(r=side_length-motor_carrier_thick, h=side_width+2);
                 translate([-50,0,0]) cube([100,head_length+2,50], center=true);
@@ -180,8 +186,11 @@ module head_cage(){
             translate([0,0,0]) cube([200,head_length+25,50], center=true);
         }
         
-        //hollow out the lower mount
-        #translate([side_length,0,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_holes(height = side_width*3, solid=0, motor_rad=22/2+slop, screw_sep=15);
+        //hollow out the pendulum mount
+        translate([pendulum_drop,-side_width/2,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_holes(height = side_width*3, solid=0, motor_rad=22/2+slop, screw_sep=15);
+        
+        //servo holes
+        rotate([0,30,0]) translate([pendulum_drop,0,0]) rotate([90,0,0]) rotate([0,0,-90]) servo_mount(height = side_width, solid=0);
         
         //mount flanged bearings, two on each side
         cylinder(r=22/2+slop, h=head_length+10, center=true);
@@ -195,6 +204,16 @@ module head_cage(){
         
         //flatten the printing side
         translate([0,-side_width-side_length*3/2,0]) cube([side_length*3,side_length*3,side_length*3], center=true);
+    }
+}
+
+module servo_mount(solid = 1){
+    if(solid == 1){
+        
+    }
+    
+    if(solid == 0){
+        #cube([42, 21, 38], center=true);
     }
 }
 
@@ -323,7 +342,7 @@ module waist_holes(screw_rad = m3_rad+slop, nut_rad = m3_sq_nut_rad){
         rotate([angle,0,0]) {
             for(j=[-hole_sep/2, 0, hole_sep/2]) for(k=[-vert_hole_sep/2, vert_hole_sep/2]) rotate([k,0,0]) rotate([0,j,0]) translate([0,0,rad-wall*2]) {
                 cylinder(r=screw_rad+slop, h=wall*3);
-                translate([0,0,wall*2-petal_thick]) cylinder(r1=screw_rad+slop, r2=screw_rad+wall, h=wall);
+                translate([0,0,wall*2-petal_thick*.75]) cylinder(r1=screw_rad, r2=screw_rad+wall, h=wall);
                 
                 //nut trap
                 #translate([0,0,-wall/4]) cylinder(r2=nut_rad, r1 = nut_rad+1, h=wall, $fn=4);
@@ -362,6 +381,15 @@ module waist_band(angle = 0, textured = false){
                 }
             }
             
+            //some hollows for faster printing
+            for(i=[-180/22*3:360/22:30]) rotate([0,0,i]) {
+                translate([rad,0,0]) rotate([0,90,0]) cylinder(r=22, h=100, center=true, $fn=4);
+            }
+            
+            //some hollows for faster printing
+            for(i=[-180/22*3:360/22:10]) rotate([0,0,i]) {
+               rotate([0,0,180/22]) for(i=[-1,1]) translate([0,0,46.5*i]) translate([rad,0,0]) rotate([0,90,0]) cylinder(r=22, h=100, center=true, $fn=4);
+            }
                 
             //mounting holes
             rotate([0,0,180/num_petals]) waist_holes(angle = angle);
@@ -377,7 +405,7 @@ module petal_holes(screw_rad = m3_rad){
         rotate([angle,0,0]) {
             for(j=[-hole_sep/2, hole_sep/2]) rotate([0,j,0]) translate([0,0,rad-wall*2]) {
                 cylinder(r=screw_rad+slop, h=wall*3);
-                translate([0,0,wall*2-petal_thick]) cylinder(r1=screw_rad+slop, r2=screw_rad+wall, h=wall);
+                translate([0,0,wall*2-petal_thick*.75]) cylinder(r1=screw_rad, r2=screw_rad+wall, h=wall);
             }
         }
 }
