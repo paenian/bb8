@@ -419,13 +419,13 @@ module print_pads(height = 1){
     //center pad
     hull() translate([0,center,0]) {
         translate([0,rad/4,0]) rotate([0,-90,0]) cylinder(r=pad_rad, h=1);
-        translate([0,width/2-pad_rad,0]) rotate([0,-90,0]) cube([pad_rad, pad_rad*2, 1], center=true);
+        translate([-.5,width/2-pad_rad,0]) rotate([0,-90,0]) cube([pad_rad, pad_rad*2, 1], center=true);
     }
     
     //end pads
     for(i=[-1,1]) translate([0,center,(rad-cap_height)*i]) hull(){
         translate([0,-rad/4,0]) rotate([0,-90,0]) cylinder(r=pad_rad, h=1);
-        translate([0,-width/2+pad_rad,0]) rotate([0,-90,0]) cube([pad_rad, pad_rad*2, 1], center=true);
+        translate([-.5,-width/2+pad_rad,0]) rotate([0,-90,0]) cube([pad_rad, pad_rad*2, 1], center=true);
     }
     
     %translate([0,center,0]) cube([.1,width,600], center=true);
