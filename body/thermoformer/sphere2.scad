@@ -16,11 +16,15 @@ waist_thick = 75;
 waist_overlap = 3; //this is in degrees
 
 
-part = 5;
+part = 10;
 angle = 90+30;
 textured = false;
 flip = 0;
 facets = 30;    //for rendering
+
+pendulum_rod_length = 30;
+pendulum_rod_rad = 10/2+slop;
+pendulum_drop = 100;
 
 $fn=facets;
 
@@ -50,6 +54,10 @@ if(part == 5)
     head_cage();
 if(part == 6)
     waist_band();
+if(part == 7){
+    pendulum();
+    %head_cage();
+}
 
 if(part == 10)
     assembled();
@@ -142,13 +150,69 @@ module assembled(){
         rotate([0,90,0]) bus();
     
     head_cage();
+    
+    pendulum();
+}
+
+//the central weight, swings back and forth to turn left and right.
+//Controlled by a servo mounted on the head cage.
+module pendulum(length = 100){
+    wish_drop = pendulum_rod_length*2;
+    
+    thick = pendulum_rod_rad*2 + wall/2;
+    
+    translate([pendulum_drop,-8,-thick/2]) rotate([0,0,90])
+    difference(){
+        union(){
+            //wishbone
+            hull(){
+                scale([1,wish_drop/(pendulum_rod_length/2),1]) cylinder(r=pendulum_rod_length/2+7, h=thick);
+                translate([-pendulum_rod_length/2-7,-25,0]) cube([pendulum_rod_length+7*2, 25, thick]);
+            }
+            
+            
+            //dangle - use a long 4mm screw to hold the weights on; this is an extension to make the weights hang lower.
+            translate([0,-length,thick/2]) rotate([90,0,0]) {
+                mirror([0,0,1]) rotate([0,0,180/8]) cylinder(r=(thick/2)/cos(180/8), h=25, $fn=8);
+            }
+        }
+        
+        //wishbone hollow
+        translate([0,0,-.5]) scale([1,wish_drop/(pendulum_rod_length/2),1]) cylinder(r=pendulum_rod_length/2+1, h=thick+1);
+        translate([0,0,thick/2]) rotate([0,90,0]) hull(){
+            cylinder(r=25, h=pendulum_rod_length+2, center=true);
+            cylinder(r=35, h=pendulum_rod_length-8, center=true);
+            
+        }
+        
+        //cut off the top
+        difference(){
+            translate([0,100,0]) cube([200,200,200], center=true);
+            translate([0,0,thick/2]) rotate([0,90,0]) cylinder(r=thick/2, h=200, center=true);
+        }
+        
+        //m4 screwholes for mounting
+        translate([0,0,thick/2]) rotate([0,90,0]){
+            cylinder(r=m4_rad, h=200, center=true);
+            translate([0,0,pendulum_rod_length/2+wall/2]) cylinder(r=m4_cap_rad, h=10);
+            mirror([0,0,1]) translate([0,0,pendulum_rod_length/2+wall/2]) cylinder(r1=m4_square_nut_rad, r2=m4_square_nut_rad+1, h=10, $fn=4);
+        }
+        
+        //rod hole
+        translate([0,0,thick/2]) rotate([0,90,0]) cylinder(r=pendulum_rod_rad+slop, h=pendulum_rod_length+5, center=true);
+        
+        //m4 screwhole for the weights
+        translate([0,-wish_drop,thick/2]) rotate([90,0,0]) {
+            cylinder(r=m4_rad, h=200, center=true);
+            mirror([0,0,1]) translate([0,0,-wall]) cylinder(r1=m4_square_nut_rad, r2=m4_square_nut_rad+1, h=20, $fn=4);
+        }
+    }
 }
 
 //head cage is a delineator - it holds the space where the head will be mounted inside, and also provides a low, centered mount point for the tilt weights and gyroscope.
 module head_cage(){
     side_width = 20;
-    side_length = 110;
-    pendulum_drop = side_length+wall;
+    side_length = 100;
     
     servo_rotate = 25;
     servo_rad = side_length+wall/2;
@@ -171,7 +235,8 @@ module head_cage(){
             }
             
             //mount for the pendulum
-            translate([pendulum_drop,-side_width/2,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_solid(height = side_width*1.5, solid=0, motor_rad=22/2+slop, screw_sep=15);
+            translate([pendulum_drop,-side_width/2,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_solid(height = pendulum_rod_length, solid=0, motor_rad=22/2+slop, screw_sep=15);
+            %translate([pendulum_drop,-side_width/2,0]) rotate([90,0,0]) rotate([0,0,-90]) cylinder(r=28, h=5, center=true);
             
             //mount for the servo
             rotate([0,servo_rotate,0]) translate([servo_rad,0,0]) rotate([90,0,0]) rotate([0,0,-90]) servo_mount(height = side_width, solid=1);
