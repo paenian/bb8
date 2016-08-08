@@ -116,8 +116,8 @@ echo(bus_length);
 //%translate([0,0,-200]) cube([50,50,50]);
 
 module assembled(){
-    *for(i=[0,1]) mirror([0,0,i])
-        translate([0,0,rad+50]) capcap(textured=textured);
+    *for(i=[0,1]) rotate([i,0,0]) 
+        translate([0,0,rad+50]) capcap(angle=0, textured=textured);
     
     *for(i=[0,1]) mirror([0,0,i])
         translate([0,0,rad-cap_height]) cap(textured=textured);
@@ -504,7 +504,7 @@ module capcap_screws(num_screws=3, screw_rad = m3_rad){
     }
 }
 
-module capcap(textured = false){
+module capcap(angle=0, textured = false){
     num_braces = 3;
     difference(){
         union(){
