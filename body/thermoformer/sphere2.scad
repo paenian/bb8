@@ -18,7 +18,7 @@ waist_overlap = 3; //this is in degrees
 
 part = 5;
 angle = 90+30;
-textured = false;
+textured = true;
 flip = 0;
 facets = 30;    //for rendering
 
@@ -33,7 +33,7 @@ $fn=facets;
 
 if(part == 0){
     cap(angle = angle, textured = textured);
-    rotate([0,0,60]) translate([0,0,50]) mirror([0,1,0]) capcap(angle = angle, textured = textured);
+    %rotate([0,0,60]) translate([0,0,50]) mirror([0,1,0]) capcap(angle = angle, textured = textured);
 }
     
 if(part == 11)
@@ -46,8 +46,11 @@ if(part == 3)
     mirror([0,0,flip]) motor_carrier();
 if(part == 4)
     mirror([0,0,flip]) motor_gear();
-if(part == 5)
+if(part == 5){
     head_cage();
+    %for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
+        rotate([0,90,0]) bus();
+}
 if(part == 6)
     waist_band();
 
@@ -116,13 +119,13 @@ echo(bus_length);
 //%translate([0,0,-200]) cube([50,50,50]);
 
 module assembled(){
-    *for(i=[0,1]) mirror([0,0,i])
+    for(i=[0,1]) mirror([0,0,i])
         translate([0,0,rad+50]) capcap(textured=textured);
     
-    *for(i=[0,1]) mirror([0,0,i])
+    for(i=[0,1]) mirror([0,0,i])
         translate([0,0,rad-cap_height]) cap(textured=textured);
     
-    for(i=[180/num_petals:360/num_petals:180-100]){
+    for(i=[180/num_petals:360/num_petals:180-0]){
         petal(angle=i, textured=textured);
         translate([0,0,0]) waist_band(angle=(i+180/num_petals), textured=textured);
     }
@@ -135,13 +138,13 @@ module assembled(){
         translate([motor_offset,0,rad-cap_height]) motor_gear();
     }
     
-    for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
+    *for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
         motor_carrier();
     
-    for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
+    *for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
         rotate([0,90,0]) bus();
     
-    head_cage();
+    *head_cage();
 }
 
 //head cage is a delineator - it holds the space where the head will be mounted inside, and also provides a low, centered mount point for the tilt weights and gyroscope.
@@ -220,29 +223,43 @@ module servo_mount(solid = 1, mount_x=42, mount_y=21, mount_z = 20){
     servo_z = 38;
     
     screw_sep_x = 50;
-    screw_sep_y = 15;
+    screw_sep_y = 10;
     
-    wall = 2.5;
+    screw_rad = 1.4;
+    wire_rad = 2.75;
+    
+    wall = 2.75;
     
     translate([0,0,mount_z/2]) {
         //body
         if(solid == 1){
-            //body
             translate([0,0,+wall/2])
             minkowski(){
                 cube([servo_x, servo_y, mount_z-wall], center=true);
                 sphere(r=wall);
             }
-        
         }
     
         if(solid == 0){
-            //body
             translate([0,0,-wall/2]) cube([servo_x, servo_y, servo_z+wall], center=true);
-        
-            //screwholes
-        
         }
+        
+        //screwholes
+        for(i=[-1, 1]) for(j=[-1, 1]) translate([screw_sep_x/2*i, screw_sep_y/2*j, 0]){
+            if(solid == 0){
+                cylinder(r=screw_rad, h=50, center=true);
+            }
+            if(solid == 1){
+                hull(){
+                    translate([0,0,-mount_z/2]) cylinder(r=screw_rad+wall+1, h=wall);
+                    #translate([-screw_rad,0,mount_z/2]) cylinder(r=.1, h=.1);
+                }
+            }
+        }
+        
+        //wire slot
+        if(solid == 0)
+            translate([-servo_x/2,0,0]) cylinder(r=wire_rad, h=50, center=true);
     }
 }
 
