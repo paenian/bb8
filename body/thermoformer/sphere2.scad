@@ -16,11 +16,15 @@ waist_thick = 75;
 waist_overlap = 3; //this is in degrees
 
 
-part = 5;
+part = 10;
 angle = 90+30;
-textured = true;
+textured = false;
 flip = 0;
 facets = 30;    //for rendering
+
+pendulum_rod_length = 30;
+pendulum_rod_rad = 10/2+slop;
+pendulum_drop = 100;
 
 $fn=facets;
 
@@ -53,6 +57,10 @@ if(part == 5){
 }
 if(part == 6)
     waist_band();
+if(part == 7){
+    pendulum();
+    %head_cage();
+}
 
 if(part == 10)
     assembled();
@@ -119,13 +127,13 @@ echo(bus_length);
 //%translate([0,0,-200]) cube([50,50,50]);
 
 module assembled(){
-    for(i=[0,1]) mirror([0,0,i])
-        translate([0,0,rad+50]) capcap(textured=textured);
+    *for(i=[0,1]) rotate([i,0,0]) 
+        translate([0,0,rad+50]) capcap(angle=0, textured=textured);
     
-    for(i=[0,1]) mirror([0,0,i])
+    *for(i=[0,1]) mirror([0,0,i])
         translate([0,0,rad-cap_height]) cap(textured=textured);
     
-    for(i=[180/num_petals:360/num_petals:180-0]){
+    *for(i=[180/num_petals:360/num_petals:180-0]){
         petal(angle=i, textured=textured);
         translate([0,0,0]) waist_band(angle=(i+180/num_petals), textured=textured);
     }
@@ -144,14 +152,78 @@ module assembled(){
     *for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
         rotate([0,90,0]) bus();
     
-    *head_cage();
+    head_cage();
+    
+    pendulum();
+}
+
+//the central weight, swings back and forth to turn left and right.
+//Controlled by a servo mounted on the head cage.
+module pendulum(length = 100){
+    wish_drop = pendulum_rod_length*2;
+    
+    thick = pendulum_rod_rad*2 + wall/2;
+    
+    translate([pendulum_drop,-8,-thick/2]) rotate([0,0,90])
+    difference(){
+        union(){
+            //wishbone
+            hull(){
+                scale([1,wish_drop/(pendulum_rod_length/2),1]) cylinder(r=pendulum_rod_length/2+7, h=thick);
+                translate([-pendulum_rod_length/2-7,-25,0]) cube([pendulum_rod_length+7*2, 25, thick]);
+            }
+            
+            
+            //dangle - use a long 4mm screw to hold the weights on; this is an extension to make the weights hang lower.
+            translate([0,-length,thick/2]) rotate([90,0,0]) {
+                mirror([0,0,1]) rotate([0,0,180/8]) cylinder(r=(thick/2)/cos(180/8), h=25, $fn=8);
+            }
+        }
+        
+        //wishbone hollow
+        difference(){
+            union(){
+                translate([0,0,-.5]) scale([1,wish_drop/(pendulum_rod_length/2),1]) cylinder(r=pendulum_rod_length/2+1, h=thick+1);
+                translate([0,0,thick/2]) rotate([0,90,0]) hull(){
+                    cylinder(r=25, h=pendulum_rod_length+2, center=true);
+                    cylinder(r=35, h=pendulum_rod_length-8, center=true);
+                }
+            }
+            
+            //rod mount
+            for(i=[0,1]) mirror([i,0,0]){
+                translate([-pendulum_rod_length/2-3.5,0,thick/2]) rotate([0,90,0]) cylinder(r1=thick/2+3, r2=pendulum_rod_rad, h=wall/2);
+                #translate([-pendulum_rod_length/2-3.5+wall/2-.1,0,thick/2]) rotate([0,90,0]) cylinder(r1=pendulum_rod_rad, r2=pendulum_rod_rad-slop*3, h=wall/3);
+            }
+        }
+        
+        //cut off the top
+        difference(){
+            translate([0,100,0]) cube([200,200,200], center=true);
+            translate([0,0,thick/2]) rotate([0,90,0]) cylinder(r=thick/2, h=200, center=true);
+        }
+        
+        //m4 screwholes for mounting
+        translate([0,0,thick/2]) rotate([0,90,0]){
+            cylinder(r=m4_rad, h=200, center=true);
+            translate([0,0,pendulum_rod_length/2+wall/2]) cylinder(r=m4_cap_rad, h=10);
+            mirror([0,0,1]) translate([0,0,pendulum_rod_length/2+wall/2]) cylinder(r1=m4_square_nut_rad, r2=m4_square_nut_rad+1, h=10, $fn=4);
+        }
+        
+        
+        
+        //m4 screwhole for the weights
+        translate([0,-wish_drop,thick/2]) rotate([90,0,0]) {
+            cylinder(r=m4_rad, h=200, center=true);
+            mirror([0,0,1]) translate([0,0,-wall]) cylinder(r1=m4_square_nut_rad, r2=m4_square_nut_rad+1, h=20, $fn=4);
+        }
+    }
 }
 
 //head cage is a delineator - it holds the space where the head will be mounted inside, and also provides a low, centered mount point for the tilt weights and gyroscope.
 module head_cage(){
     side_width = 20;
-    side_length = 110;
-    pendulum_drop = side_length+wall;
+    side_length = 100;
     
     servo_rotate = 25;
     servo_rad = side_length+wall/2;
@@ -174,7 +246,8 @@ module head_cage(){
             }
             
             //mount for the pendulum
-            translate([pendulum_drop,-side_width/2,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_solid(height = side_width*1.5, solid=0, motor_rad=22/2+slop, screw_sep=15);
+            translate([pendulum_drop,-side_width/2,0]) rotate([90,0,0]) rotate([0,0,-90]) motor_mount_solid(height = pendulum_rod_length, solid=0, motor_rad=22/2+slop, screw_sep=15);
+            %translate([pendulum_drop,-side_width/2,0]) rotate([90,0,0]) rotate([0,0,-90]) cylinder(r=28, h=5, center=true);
             
             //mount for the servo
             rotate([0,servo_rotate,0]) translate([servo_rad,0,0]) rotate([90,0,0]) rotate([0,0,-90]) servo_mount(height = side_width, solid=1);
@@ -252,7 +325,7 @@ module servo_mount(solid = 1, mount_x=42, mount_y=21, mount_z = 20){
             if(solid == 1){
                 hull(){
                     translate([0,0,-mount_z/2]) cylinder(r=screw_rad+wall+1, h=wall);
-                    #translate([-screw_rad,0,mount_z/2]) cylinder(r=.1, h=.1);
+                    translate([-screw_rad*i,0,mount_z/2]) cylinder(r=.1, h=.1);
                 }
             }
         }
@@ -521,7 +594,7 @@ module capcap_screws(num_screws=3, screw_rad = m3_rad){
     }
 }
 
-module capcap(textured = false){
+module capcap(angle=0, textured = false){
     num_braces = 3;
     difference(){
         union(){
