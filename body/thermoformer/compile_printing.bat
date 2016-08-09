@@ -16,7 +16,7 @@ openscad -o printing/rightmotor_carrier.stl -D part=3 -D textured=true -D angle=
 
 openscad -o printing/bus.stl -D part=2 -D facets=180 sphere2.scad &
 openscad -o printing/head_cage.stl -D part=5 -D facets=180 sphere2.scad & 
-
+openscad -o printing/pendulum.stl -D part=7 -D facets=180 sphere2.scad &
 
 petal=0;
 petals=6;
