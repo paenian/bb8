@@ -193,7 +193,7 @@ module pendulum(length = 100){
             //rod mount
             for(i=[0,1]) mirror([i,0,0]){
                 translate([-pendulum_rod_length/2-3.5,0,thick/2]) rotate([0,90,0]) cylinder(r1=thick/2+3, r2=pendulum_rod_rad, h=wall/2);
-                #translate([-pendulum_rod_length/2-3.5+wall/2-.1,0,thick/2]) rotate([0,90,0]) cylinder(r1=pendulum_rod_rad, r2=pendulum_rod_rad-slop*3, h=wall/3);
+                translate([-pendulum_rod_length/2-3.5+wall/2-.1,0,thick/2]) rotate([0,90,0]) cylinder(r1=pendulum_rod_rad, r2=pendulum_rod_rad-slop*3, h=wall/3);
             }
         }
         
@@ -210,7 +210,9 @@ module pendulum(length = 100){
             mirror([0,0,1]) translate([0,0,pendulum_rod_length/2+wall/2]) cylinder(r1=m4_square_nut_rad, r2=m4_square_nut_rad+1, h=10, $fn=4);
         }
         
-        
+        //servo holes
+        for(i=[0:4:18])
+            translate([25,-7-i,thick/2]) rotate([0,90,0]) cylinder(r=1, h=50, center=true);
         
         //m4 screwhole for the weights
         translate([0,-wish_drop,thick/2]) rotate([90,0,0]) {
