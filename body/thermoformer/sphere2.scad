@@ -12,11 +12,12 @@ petal_thick = 5;
 petal_attach_rad = cap_rad - wall;
 pad_rad = 25.4;
 
-waist_thick = 75;
+waist_thick = 20;
 waist_overlap = 3; //this is in degrees
+waist_angle = 35;
 
 
-part = 10;
+part = 6;
 angle = 90+30;
 textured = false;
 flip = 0;
@@ -56,7 +57,7 @@ if(part == 5){
         rotate([0,90,0]) bus();
 }
 if(part == 6)
-    waist_band();
+    waist_band(vert_angle = waist_angle);
 if(part == 7){
     pendulum();
     %head_cage();
@@ -130,12 +131,12 @@ module assembled(){
     *for(i=[0,1]) rotate([i,0,0]) 
         translate([0,0,rad+50]) capcap(angle=0, textured=textured);
     
-    *for(i=[0,1]) mirror([0,0,i])
+    for(i=[0,1]) mirror([0,0,i])
         translate([0,0,rad-cap_height]) cap(textured=textured);
     
-    *for(i=[180/num_petals:360/num_petals:180-0]){
+    for(i=[180/num_petals:360/num_petals:180-0]){
         petal(angle=i, textured=textured);
-        translate([0,0,0]) waist_band(angle=(i+180/num_petals), textured=textured);
+        translate([0,0,0]) waist_band(angle=(i+180/num_petals), textured=textured, vert_angle=waist_angle);
     }
     
     //this is drawn in by the motor carrier
@@ -454,28 +455,44 @@ module motor_carrier(){
 }
 
 //holes for mounting the panels to the waist band
-module waist_holes(screw_rad = m3_rad+slop, nut_rad = m3_sq_nut_rad){
-    angle = 90;
-    vert_hole_sep = 10;
+module waist_holes(screw_rad = m3_rad+slop, nut_rad = m3_sq_nut_rad, vert_angle = 0){
+    angle = 0;
+    vert_hole_sep = 0;
     hole_sep = 360/num_petals-waist_overlap*2;
     
-    for(i=[180/num_petals:360/num_petals:360-1]) rotate([0,0,i])
-        rotate([angle,0,0]) {
-            for(j=[-hole_sep/2, 0, hole_sep/2]) for(k=[-vert_hole_sep/2, vert_hole_sep/2]) rotate([k,0,0]) rotate([0,j,0]) translate([0,0,rad-wall*2]) {
-                cylinder(r=screw_rad+slop, h=wall*3);
-                translate([0,0,wall*2-petal_thick*.75]) cylinder(r1=screw_rad, r2=screw_rad+wall, h=wall);
+    num_petals = 6;
+    
+    for(i=[180/num_petals:360/num_petals:360-1]) {
+        for(j=[-hole_sep/2, 0, hole_sep/2]) {
+            for(k=[-vert_hole_sep/2, vert_hole_sep/2]) {
+                rotate([0,0,i+j]) rotate([90-vert_angle+k-2,0,0]) translate([0,0,rad-wall*2]) {
                 
-                //nut trap
-                #translate([0,0,-wall/4]) cylinder(r2=nut_rad, r1 = nut_rad+1, h=wall, $fn=4);
+                    #cylinder(r=screw_rad+slop, h=wall*3);
+                    translate([0,0,wall*2-petal_thick*.75]) cylinder(r1=screw_rad, r2=screw_rad+wall, h=wall);
+                
+                    //nut trap
+                    translate([0,0,-wall/4]) cylinder(r2=nut_rad, r1 = nut_rad+1, h=wall, $fn=4);
+                    }
+                }
             }
         }
 }
 
-module waist_band(angle = 0, textured = false){
+module waist_band(angle = 0, vert_angle = 0, textured = false){
+        center_height = sin(vert_angle) * rad;
+    
+    echo(vert_angle);
+    echo(center_height);
+    span = 3;
+    
         rotate([0,0,angle])
         difference(){
             intersection(){
-                cube([rad*3,rad*3,waist_thick], center=true);
+                translate([0,0,center_height]) cube([rad*3,rad*3,waist_thick], center=true);
+                *hull(){
+                    rotate([0,-vert_angle+span,0]) translate([0,0,waist_thick/2]) cube([rad*3,rad*3,waist_thick], center=true);
+                    rotate([0,-vert_angle-span,0]) translate([0,0,-waist_thick/2]) cube([rad*3,rad*3,waist_thick], center=true);
+                }
         
                 //this is the space that they'll occupy.
                 difference(){
@@ -503,17 +520,17 @@ module waist_band(angle = 0, textured = false){
             }
             
             //some hollows for faster printing
-            for(i=[-180/22*3:360/22:30]) rotate([0,0,i]) {
+            *for(i=[-180/22*3:360/22:30]) rotate([0,5-vert_angle,i]) {
                 translate([rad,0,0]) rotate([0,90,0]) cylinder(r=22, h=100, center=true, $fn=4);
             }
             
             //some hollows for faster printing
-            for(i=[-180/22*3:360/22:10]) rotate([0,0,i]) {
-               rotate([0,0,180/22]) for(i=[-1,1]) translate([0,0,46.5*i]) translate([rad,0,0]) rotate([0,90,0]) cylinder(r=22, h=100, center=true, $fn=4);
+            for(i=[-180/22*3-2:360/22:10]) rotate([0,-2.6-vert_angle,i]) {
+               rotate([0,0,180/22]) for(i=[-1,1]) translate([0,0,30*i]) translate([rad,0,0]) rotate([0,90,0]) cylinder(r=22, h=100, center=true, $fn=4);
             }
                 
             //mounting holes
-            rotate([0,0,180/num_petals]) waist_holes(angle = angle);
+            rotate([0,0,180/num_petals]) waist_holes(angle = angle, vert_angle = vert_angle);
         }
 }
 
