@@ -1,4 +1,3 @@
-
 /*****************************************************************
 This is the Control side of a remote control using a modified
 version of the XBEE remote control code.
@@ -45,8 +44,8 @@ Distributed as-is; no warranty is given.
 // Trying it using hardware serial instead to avoid conflict with
 //  the servo library.
 #include "configuration.h"
-//#include <Adafruit_Trellis.h>
-
+#include "Adafruit_Trellis.h"
+#include <Wire.h>
 
 //comment this out to turn serial debugging off.
 //With it on, you can monitor the debugging with an xbee over the
@@ -71,6 +70,11 @@ int headPot[3] = {900,900,900}; //the third is angle, for turning the head; it's
 int headAtt[3] = {900, 900, 900}; //the current head attitude
 int headPotZero[3] = {900, 900, 900}; //perfectly centered
 
+//the 16 button array is the trellis
+Adafruit_Trellis array = Adafruit_Trellis();
+Adafruit_TrellisSet trellis = Adafruit_TrellisSet(&array);
+uint8_t tellis_INTPIN = 0;  //the interrupt pin - we're not going to use it, just poll instead
+//also need to connect the SDA and SCL pins :-)
 
 ////////Battery Voltage
 // We also track battery voltage for the body, head and controller itself.
@@ -137,6 +141,27 @@ void readBodyPot(){
   readBodyPot(1);
 }
 
+void initTrellis(){
+  //need to put a pullup on the int pin, if we decide to use it
+  trellis.begin(0x70);
+  
+  //do a little LED dance
+  for(uint8_t i=0; i<4; i++){
+    for(uint8_t j=0; j<4; j++){
+      trellis.setLED(i*4+j);
+      trellis.writeDisplay();
+      delay(100);
+    }
+  }
+  
+  //shut them off.  Notice the different style - wondering if they're in order :-)
+  for(uint8_t i=0; i<16; i++){
+    trellis.clrLED(i);
+    trellis.writeDisplay();
+    delay(50);
+  }
+}
+
 void initBodyPot(){
   pinMode(CONTROL_BODY_SPIN_LEFT_DPIN, INPUT_PULLUP);
   pinMode(CONTROL_BODY_SPIN_RIGHT_DPIN, INPUT_PULLUP);
@@ -188,7 +213,7 @@ void readHeadPot(uint8_t numSamples){
 }
 
 void readButtonArray(){
-  
+  trellis.readSwitches();
 }
 
 bool arraysDifferent(int pot[], int att[]){
@@ -311,7 +336,7 @@ void handleHeadPot(){ //xya joystick
   memcpy( headAtt, headPot, sizeof(headAtt));
 
   //and then send them all, for good measure - this prevents creep,
-  //whithout evaluating the axes individually.
+  //without evaluating the axes individually.
 
   //send the x - which is a left/right tilt, so gets converted to an angle
   sendAngle(BODYCHAR, HEAD_LR_ANGLE_PIN, bodyAtt[0]);
@@ -324,6 +349,27 @@ void handleHeadPot(){ //xya joystick
 }
 
 void handleButtonArray(){ //funny noises in a big fancy grid
+  //go through the button array, see which was pressed
+  //these are the sound buttons :-)
+  for(uint8_t i=0; i<12; i++){
+    if(trellis.justPressed(i)){
+      //sendTrellisButton(i);
+    }
+  }
+  
+  //the other four buttons are indicators, and the kill switch.
+  
+}
+
+void shutdownButtonArray(){
+  //simply turn off all the LEDs - this is to prevent battery drain when the controller batteries are low.
+  for(uint8_t i=0; i<16; i++){
+    trellis.clrLED(i);
+  }
+  
+  //here's an idea: 12 buttons, and 4 status LEDs that look like buttons :-)
+  //battery for the head, body and controller - blink red if low?
+  //last LED open for now :-)
 }
 
 
@@ -350,10 +396,16 @@ void shutdownHead(){
 }
 
 void shutdownController(){
+  //turn all LEDs off
+  shutdownButtonArray();
+  
   //disconnect the battery so it doesn't get too low
+  delay(10000);
 
   //first shut down the head and body - don't want it to escape.
-  //todo: implement a heartbeat - make sure the body doesn't go rogue on signal loss!
+  //todo: implement a heartbeat for the body
+  //OR we could do it like gcode commands - so that the body executes the last command, for X seconds?
+  //just have the body use a 2-second timeout - if no commands recieved, kill the motors.
 }
 
 // ASCIItoHL
@@ -456,6 +508,8 @@ void setup()
   // rate matches your Serial setting (9600 is default).
   Serial.begin(9600); 
 
+  //initialize the trellis
+  initTrellis();
 
   //Initialize the potentiometers
   //body pot: two axes
