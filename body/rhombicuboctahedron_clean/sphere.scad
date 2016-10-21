@@ -25,7 +25,7 @@ textured = false;
 
 if(assembled == false){
     //this is rotated for printing
-    rhombioctahedron_printface(face=face, textured=textured);
+    rotate([0,0,-5]) rhombioctahedron_printface(face=face, textured=textured);
 }else{
     //this is assembled as a sphere
     rhombioctahedron_face(face=face, textured=textured);
@@ -175,7 +175,7 @@ module rhombioctahedron(){
 }
 
 module screw_tab(tab=1, solid=1){
-    tab_rad = wall*1.5;
+    tab_rad = wall;
     facets = 6;
     
     tap_rad = 6/2;
