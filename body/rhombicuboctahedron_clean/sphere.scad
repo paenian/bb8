@@ -10,13 +10,15 @@ m6_tap_rad = 6/2-.5;
 m6_rad = 6/2+.5;
 
 
-face = 18;
+face = 26;
 
 
 
 washer_rad = 10.1/2+slop;
 washer_thick = 1.05;
 washer_angle = 9;
+
+corner_tab_rad = 70;
 
 assembled = false;
 textured = false;
@@ -28,15 +30,22 @@ facets = 60;
 //cone_face();
 rotate([0,0,22.5]) rotate([0,22.5,0]) translate([-rad,0,0]) rotate([0,-90,0]) corner_tab(printing = true);
 
-if(assembled == false){
-    //this is rotated for printing
-    rotate([0,0,-5]) rhombioctahedron_printface(face=face, textured=textured);
-}else{
-    //this is assembled as a sphere
-    rhombioctahedron_face(face=face, textured=textured);
+if(face <= 25){
+    if(assembled == false){
+        //this is rotated for printing
+        rotate([0,0,-5]) rhombioctahedron_printface(face=face, textured=textured);
+    }else{
+        //this is assembled as a sphere
+        rhombioctahedron_face(face=face, textured=textured);
+    }
 }
 
-!assembly();
+if(face == 26)
+    corner_tab(printing=true);
+
+if(face == 27)
+    assembly();
+
 module assembly(){
     rhombioctahedron_face(face=0, textured=textured);
     rhombioctahedron_face(face=1, textured=textured);
@@ -110,8 +119,6 @@ module bb8_texture_shallow(){
         sphere(r=rad-.5, $fn=facets);
     }
 }
-
-//rhombioctahedron();
 
 module rhombioctahedron_printface(face=0, textured=false){
     bottom = -rad+39;
@@ -227,20 +234,6 @@ module rhombioctahedron(){
     }
 }
 
-
-
-module corner_tab_holes(side = wall*5, tap = true){
-    screw_rad = (tap)?3:4;
-    screw_cap_rad = 7;
-    screw_cap_height = 3;
-    
-    for(i=[0:1]) for(j=[0:1]) mirror([i,0,0]) mirror([0,j,0]) translate([side/3.75, side/3.75,0]){
-        cylinder(r=screw_rad, h=wall*3, center=true);
-        cylinder(r1=screw_rad, r2=screw_cap_rad, h=screw_cap_height);
-        translate([0,0,screw_cap_height-.01]) cylinder(r=screw_cap_rad, h=wall);
-    }
-}
-
 module corner_tab_array(){
     //these hit the corners of panels 0, 2, 4 and 6
     for(i=[0:90:359]) rotate([0,0,i]) {
@@ -260,17 +253,31 @@ module corner_tab_array(){
     
 }
 
+module corner_tab_holes(tap = true){
+    side = corner_tab_rad;
+    screw_rad = (tap)?3:4;
+    screw_cap_rad = 7;
+    screw_cap_height = 3;
+    
+    for(i=[0:1]) for(j=[0:1]) mirror([i,0,0]) mirror([0,j,0]) translate([side/3.75, side/3.75,0]){
+        cylinder(r=screw_rad, h=wall*3, center=true);
+        cylinder(r1=screw_rad, r2=screw_cap_rad, h=screw_cap_height);
+        translate([0,0,screw_cap_height-.01]) cylinder(r=screw_cap_rad, h=wall);
+    }
+}
+
 module corner_tab(printing = 1){
-    side = wall*6;
+    side = corner_tab_rad;
     inset = -wall-1;
     height = wall/2+abs(inset/2);
-    slope = 4;
+    slope = 5;
     
     if(printing == true){
         difference(){
-            *translate([0,0,inset]) cube([side, side, height], center=true);
-            translate([0,0,inset]) cylinder(r1=side/2+slope, r2=side/2, h=height, center=true, $fn = facets);
-            
+            union(){
+                translate([0,0,inset]) cylinder(r1=side/2+slope, r2=side/2, h=height, center=true, $fn = facets);
+                translate([0,0,inset]) cylinder(r1=side/2+slope+slope, r2=side/2+slope, h=height, center=true, $fn = 3);
+            }
             
             //curve the inner side
             translate([0,0,-rad]) sphere(r=rad-wall, $fn=facets);
@@ -280,44 +287,15 @@ module corner_tab(printing = 1){
     }else{
         union(){
             difference(){
-                *translate([0,0,inset]) cube([side, side, height], center=true);
-                translate([0,0,inset]) cylinder(r1=side/2+slope+slop*2, r2=side/2+slop*2, h=height+slop*2, center=true, $fn = facets);
+                union(){
+                    translate([0,0,inset]) cylinder(r1=side/2+slope+slop*2, r2=side/2+slop*2, h=height+slop*2, center=true, $fn = facets);
+                    translate([0,0,inset]) cylinder(r1=side/2+slope+slope+slop*2, r2=side/2+slope+slop*2, h=height, center=true, $fn = 3);
+                }
                 
                 //curve the inner side
                 translate([0,0,-rad-wall]) sphere(r = rad-wall, $fn = facets);
             }
             translate([0,0,inset+height/2]) corner_tab_holes(tap = false, side=side);
-        }
-    }
-}
-
-module screw_tab(tab=1, solid=1){
-    tab_rad = 11;
-    facets = 6;
-    
-    tap_rad = 5/2;
-    screw_rad = 6/2;
-    screw_cap_rad = 12/2;
-    
-    if(tab == 1){
-        if(solid == 1){
-            rotate([0,0,0/facets]) cylinder(r=tab_rad, h=wall, $fn=facets, center=true);
-        }
-        if(solid == 0){
-            //small screwhole
-            translate([0,-tab_rad/2,-.1]) cylinder(r=tap_rad, h=wall*5, center=true);
-        }
-    }
-    
-    if(tab == 0){
-        if(solid == 0){
-            rotate([0,0,0/facets]) cylinder(r=tab_rad+slop*2, h=wall+slop, $fn=facets, center=true);
-        }
-        if(solid == 0){
-            
-            //big screwhole, plus a nice conic cap
-            translate([0,tab_rad/2,-.1]) cylinder(r=screw_rad, h=wall*2, center=true);
-            translate([0,tab_rad/2,-wall+1]) cylinder(r2=screw_rad, r1=screw_cap_rad, h=wall/4, center=true);
         }
     }
 }
@@ -337,37 +315,6 @@ module square_face(){
         }
         //hollow out the inside
         sphere(r=rad-wall, $fn=facets);
-        
-        //cut out the inset tab
-        *for(i=[0:90:359]) for(j=[0:1]) mirror([j,0,0]) rotate([0,i,0]) rotate([-22.5,0,0]) rotate([0,0,washer_angle]) translate([0,rad-wall,0]) rotate([90,0,0]) screw_tab(tab=j, solid=0);
-        
-        //cutout the corner fasteners
-        *for(i=[0:90:359]) 
-            rotate([0,i,0])
-            rotate([-22.5,0,0]) rotate([0,0,22.5]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        
-        //#rotate([0,0,22.5]) rotate([22.5,0,0]) translate([0,0,0]) rotate([90-90,0,0]) corner_tab(printing=false);
-        //#rotate([22.5,0,0]) rotate([0,0,22.5]) translate([0,0,0]) rotate([90-90,0,0]) corner_tab(printing=false);
-        //#rotate([22.5,0,22.5]) translate([0,0,0]) rotate([90-90,0,0]) corner_tab(printing=false);
-        
-        /*
-        rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        */
-        
-        //screwholes
-        /*for(i=[0:90:359]) rotate([0,i,0])
-            rotate([-22.5,0,0]) translate([0,rad-wall/2,-.1]) screwhole();
-        */
-        
-        //washer slots - two per face, in the corners.
-        /*for(k=[0,1]) for(j=[-1,1]) for(i=[0,1]) rotate([0,90*k,0]) rotate([0,90*j,0])mirror([i,0,0]) {
-            rotate([-22.5,0,0]) rotate([0,0,washer_angle]) translate([0,rad-wall/2,0]) screwhole(); //rotate([90,0,0]) washer();
-        }*/
-        
-        
     }
 }
 
@@ -386,74 +333,6 @@ module triangle_face(){
         }
         
         //hollow out the inside
-        sphere(r=rad-wall, $fn=180);
-/*        
-        rotate([0,0,-45])
-        { 
-            #rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-            #rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-            #rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-            #rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        }
-        
-        rotate([0,0,-90]) rotate([45,0,0]) 
-        { 
-            #rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-            #rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-            #rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-            #rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        }
-        
-        rotate([45,0,0])
-        { 
-            #rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-            #rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-            #rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-            #rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        }
-*/
-        
-        //#rotate([45,0,0]) rotate([0,0,-45]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        
-        /*
-        
-        //cutout the corner fasteners
-        #rotate([0,180,0]) rotate([-22.5,0,0]) rotate([0,0,22.5]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        
-        #rotate([0,270,0]) rotate([-22.5,0,0]) rotate([0,0,22.5]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        #rotate([0,0,0]) rotate([-22.5,0,0]) rotate([0,0,22.5]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        #rotate([0,90,0]) rotate([-22.5,0,0]) rotate([0,0,22.5]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        
-        #rotate([45,0,0]) rotate([0,180,0]) rotate([-22.5,0,0]) rotate([0,0,22.5]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        
-        #rotate([0,0,-45]) rotate([0,180,0]) rotate([-22.5,0,0]) rotate([0,0,22.5]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        */
-        
-        //screwholes
-        
-        
-        /*
-        rotate([0,0,-45]) rotate([45,0,0]) rotate([-22.5,0,0]) corner_tab(printing=false);
-        rotate([45,0,0])
-        //rotate([-22.5,0,0])
-        translate([0,rad-wall/2,-.1]) screwhole();
-        
-        rotate([45,0,0])
-        rotate([0,-90,0])
-        rotate([-22.5,0,0]) mirror([0,0,1]) translate([0,rad-wall/2,-.1]) magnethole();
-        
-        rotate([0,-45,0])
-        rotate([0,0,-90])
-        rotate([0,90,0])
-        rotate([-22.5,0,0]) mirror([0,0,1]) translate([0,rad-wall/2,-.1]) magnethole();
-        */
-        
-        
-        //washer slots in the triangles?  Probably shouldn't put them in.., then the triangles become the access holes?
-        *for(i=[0,1]) rotate([0,0,-45]) rotate([45,0,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,washer_angle]) translate([0,rad-wall/2,0]) magnethole();  //rotate([90,0,0]) washer();
-        
-        *for(i=[0,1]) rotate([45,0,0]) rotate([0,-90,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,washer_angle]) translate([0,rad-wall/2,0]) mirror([0,0,1]) magnethole();  //rotate([90,0,0]) washer();
-            
-        *for(i=[0,1]) rotate([0,-45,0]) rotate([0,0,-90]) rotate([0,90,0]) mirror([i,0,0]) rotate([-22.5,0,0]) rotate([0,0,washer_angle]) translate([0,rad-wall/2,0]) mirror([0,0,1]) magnethole();  //rotate([90,0,0]) washer();
+        sphere(r=rad-wall, $fn=facets);
     }
 }
