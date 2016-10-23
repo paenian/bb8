@@ -17,7 +17,7 @@ waist_overlap = 3; //this is in degrees
 waist_angle = 35;
 
 
-part = 6;
+part = 3;
 angle = 90+30;
 textured = false;
 flip = 0;
@@ -427,7 +427,7 @@ module motor_carrier(){
     difference(){
         union(){
             for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,motor_carrier_thick/2])
-                rotate([0,0,-90]) motor_mount(height = motor_carrier_thick, solid=0, screw_sep=screw_sep);
+               rotate([0,0,-90]) motor_mount(height = motor_carrier_thick, solid=0, screw_sep=screw_sep);
             
             hull() for(i=[-motor_angle,motor_angle]) rotate([0,0,i]) translate([motor_offset,0,motor_carrier_thick/2])
             for(j=[-screw_sep/2,screw_sep/2]) translate([-motor_rad,j,0]) rotate([0,-90,0]) scale([1,.5,1]) rotate([0,0,22.5]) cylinder(r=motor_carrier_thick/2/cos(180/8), h=motor_offset-motor_rad, $fn=8);

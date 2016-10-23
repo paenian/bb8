@@ -2,10 +2,10 @@
 setlocal 
 
 echo Compiling Square...
-openscad -o printing/square_notexture.stl -D assembled=false -D textured=false -D face=0 sphere.scad
+openscad -o printing/square_notexture.stl -D assembled=false -D textured=false -D face=0 sphere.scad &
 
 echo Compiling Triangle...
-openscad -o printing/triangle_notexture.stl -D assembled=false -D textured=false -D face=19 sphere.scad
+openscad -o printing/triangle_notexture.stl -D assembled=false -D textured=false -D face=19 sphere.scad &
 
 
 FOR /L %%A IN (0,1,25) DO (
