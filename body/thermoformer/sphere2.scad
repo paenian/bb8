@@ -17,7 +17,7 @@ waist_overlap = 3; //this is in degrees
 waist_angle = 35;
 
 
-part = 6;
+part = 10;
 angle = 90+30;
 textured = false;
 flip = 0;
@@ -147,10 +147,10 @@ module assembled(){
         translate([motor_offset,0,rad-cap_height]) motor_gear();
     }
     
-    *for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
+    for(i=[0,1]) mirror([0,0,i]) translate([0,0,rad-cap_height-motor_carrier_inset])
         motor_carrier();
     
-    *for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
+    for(i=[0,1]) mirror([0,0,i]) translate([bus_drop,0,rad-cap_height-motor_carrier_inset-motor_carrier_thick])
         rotate([0,90,0]) bus();
     
     head_cage();
