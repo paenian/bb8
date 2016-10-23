@@ -26,7 +26,7 @@ facets = 60;
 %cube([200,200,.1], center=true);
 
 //cone_face();
-//rotate([0,0,22.5]) rotate([0,22.5,0]) translate([-rad,0,0]) rotate([0,-90,0]) corner_tab(printing = true);
+rotate([0,0,22.5]) rotate([0,22.5,0]) translate([-rad,0,0]) rotate([0,-90,0]) corner_tab(printing = true);
 
 if(assembled == false){
     //this is rotated for printing
@@ -164,6 +164,7 @@ module rhombioctahedron_printface(face=0, textured=false){
 }
 
 module rhombioctahedron_face(face=0, textured=false){
+    difference(){
     intersection(){
         union(){
             //equatorial faces
@@ -191,8 +192,13 @@ module rhombioctahedron_face(face=0, textured=false){
         }else{
             sphere(r=rad, $fn=facets);
         }
-
     }
+    
+    //to ensure global hole matching, we subtract ALL holes here.
+    corner_tab_array();
+    }
+    
+    
 }
 
 module rhombioctahedron(){
@@ -235,11 +241,30 @@ module corner_tab_holes(side = wall*5, tap = true){
     }
 }
 
+module corner_tab_array(){
+    //these hit the corners of panels 0, 2, 4 and 6
+    for(i=[0:90:359]) rotate([0,0,i]) {
+        rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
+        rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
+        rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
+        rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
+    }
+    
+    //this does the top and bottom
+    for(i=[90:180:359]) rotate([i,0,0]) {
+        rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
+        rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
+        rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
+        rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
+    }
+    
+}
+
 module corner_tab(printing = 1){
     side = wall*6;
     inset = -wall-1;
     height = wall/2+abs(inset/2);
-    slope = 3;
+    slope = 4;
     
     if(printing == true){
         difference(){
@@ -325,11 +350,12 @@ module square_face(){
         //#rotate([22.5,0,0]) rotate([0,0,22.5]) translate([0,0,0]) rotate([90-90,0,0]) corner_tab(printing=false);
         //#rotate([22.5,0,22.5]) translate([0,0,0]) rotate([90-90,0,0]) corner_tab(printing=false);
         
+        /*
         rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
         rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
         rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
         rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        
+        */
         
         //screwholes
         /*for(i=[0:90:359]) rotate([0,i,0])
@@ -361,7 +387,7 @@ module triangle_face(){
         
         //hollow out the inside
         sphere(r=rad-wall, $fn=180);
-        
+/*        
         rotate([0,0,-45])
         { 
             #rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
@@ -385,6 +411,7 @@ module triangle_face(){
             #rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
             #rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
         }
+*/
         
         //#rotate([45,0,0]) rotate([0,0,-45]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
         
