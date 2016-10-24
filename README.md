@@ -37,5 +37,20 @@ First step is to hook that up to a Rover 5 Motor Controller:
 Motors:
 - https://www.pololu.com/product/1163
 
+## Everything Old is New Again
+- Lately I like the old idea better, with a proper non-connected hamster.  Some ideas.
+- 3 wheels are better than 4; with 4 wheels, they need to be balanced or sprung; with 3, all wheels will always touch.
+- - controlling 3 is a little harder, but it's been done.
+- - http://www.open-electronics.org/how-to-build-an-omni-wheels-robot/
+- stacks.  Stack everything!
+- - motor stack: three motors & wheels, & the motor controller.
+- - balance stack: two linear stages, containing linear weights to dynamically balance BB8.  Should go low.
+- - - basically, the wheel stage is for moving; the balance stage fixes the inevitable wobble.
+- - downforce stack: keeps the wheels pushing down, and the whole bot locked in.  Might want to integrate this with the motor stack.
+- - - downforce wheels should be sprung, motor stack wheels should be rigid.
+- - Head stack: top stack, has the head pivot point in the center of the sphere, a counter weight,and motors to tilt and spin the head.
+- - Battery, Electronics stack: contains the battery and electronics.
+- - - Need two accelerometers - one on stack, one on the head.
+
 Paul
 
