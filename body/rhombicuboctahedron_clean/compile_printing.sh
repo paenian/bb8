@@ -20,7 +20,7 @@ do
         face=`expr $face + 1`
 
         echo $face
-        openscad -o printing/face${face}.stl -D face=${face} -D textured=true -D assembled=false -D facets=180 sphere.scad
+        openscad -o printing/face${face}.stl -D face=${face} -D textured=true -D assembled=false -D facets=180 sphere.scad &
         face=`expr $face + 1`
 
         echo $face

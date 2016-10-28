@@ -10,7 +10,7 @@ m6_tap_rad = 6/2-.5;
 m6_rad = 6/2+.5;
 
 
-face = 26;
+face = 5;
 
 
 
@@ -28,7 +28,7 @@ facets = 60;
 %cube([200,200,.1], center=true);
 
 //cone_face();
-rotate([0,0,22.5]) rotate([0,22.5,0]) translate([-rad,0,0]) rotate([0,-90,0]) corner_tab(printing = true);
+//rotate([0,0,22.5]) rotate([0,22.5,0]) translate([-rad,0,0]) rotate([0,-90,0]) corner_tab(printing = true);
 
 if(face <= 25){
     if(assembled == false){
@@ -51,6 +51,7 @@ module assembly(){
     rhombioctahedron_face(face=1, textured=textured);
     rhombioctahedron_face(face=8, textured=textured);
     rhombioctahedron_face(face=19, textured=textured);
+    corner_tab_array(printing=true);
     //rhombioctahedron_face(face=face, textured=textured);
     //rhombioctahedron_face(face=face, textured=textured);
 }
@@ -234,35 +235,40 @@ module rhombioctahedron(){
     }
 }
 
-module corner_tab_array(){
+module corner_tab_array(printing=false){
     //these hit the corners of panels 0, 2, 4 and 6
     for(i=[0:90:359]) rotate([0,0,i]) {
-        rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
+        rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=printing);
+        rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=printing);
+        rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=printing);
+        rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=printing);
     }
     
     //this does the top and bottom
     for(i=[90:180:359]) rotate([i,0,0]) {
-        rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
-        rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=false);
+        rotate(a=30, v=[1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=printing);
+        rotate(a=30, v=[-1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=printing);
+        rotate(a=30, v=[1,0,-1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=printing);
+        rotate(a=30, v=[-1,0,1]) translate([0,rad,0]) rotate([-90,0,0]) corner_tab(printing=printing);
     }
     
 }
 
 module corner_tab_holes(tap = true){
     side = corner_tab_rad;
-    screw_rad = (tap)?3:4;
-    screw_cap_rad = 7;
-    screw_cap_height = 3;
+    screw_rad = (tap)?4/2+slop:5/2+slop;
+    screw_cap_rad = 10/2;
+    screw_cap_height = 2.25;
+    cap_offset = 1;
     
     for(i=[0:1]) for(j=[0:1]) mirror([i,0,0]) mirror([0,j,0]) translate([side/3.75, side/3.75,0]){
-        cylinder(r=screw_rad, h=wall*3, center=true);
-        cylinder(r1=screw_rad, r2=screw_cap_rad, h=screw_cap_height);
-        translate([0,0,screw_cap_height-.01]) cylinder(r=screw_cap_rad, h=wall);
+        cylinder(r=screw_rad, h=wall*3, center=true, $fn=facets);
+        
+        //cap
+        translate([0,0,cap_offset]){
+            cylinder(r1=screw_rad, r2=screw_cap_rad, h=screw_cap_height, $fn=facets);
+            translate([0,0,screw_cap_height-.01]) cylinder(r=screw_cap_rad, h=wall, $fn=facets);
+        }
     }
 }
 
