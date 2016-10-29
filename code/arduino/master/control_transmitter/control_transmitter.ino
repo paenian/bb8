@@ -6,35 +6,13 @@ It sends commands in response to controller input, and transmits
 to both the body and the head.
 
 
-
 This sketch has been augmented by Paul Chase to allow for multiple
 receivers.  Commands must be preceeded with $ to distinguish them
 from comments, then the single-character ReceiverChar.
 
-Also added the ability to control servos; this requires an array
-of servo pointers, initially null, but populated as servos are
-used.
-
-
-Example usage (send these commands from your computer terminal):
-    $Bw#nnn - analog WRITE pin # to nnn
-      e.g. $Bw6088 - write pin 6 to 88
-    $Bd#v   - digital WRITE pin # to v
-      e.g. $Bddh - Write pin 13 High
-    $Br#    - digital READ digital pin #
-      e.g. $Br3 - Digital read pin 3
-    $Ba#    - analog READ analog pin #
-      e.g. $Ba0 - Read analog pin 0
-    $Bs#aaa - servo WRITE pin # to angle aaa
-      e.g. $Bs5180 - turn servo on pin five to 180 degrees
-
-    - Use hex values for pins 10-13
-    - Upper or lowercase works
-    - Use 0, l, or L to write LOW
-    - Use 1, h, or H to write HIGH
 
 This code is beerware; if you see me (or any other SparkFun 
-employee) at the local, and you've found our code helpful, please 
+employee) at the local, and you've found our code helpful, please
 buy us a round!  Paul Chase would like a beer too :-)
 
 Distributed as-is; no warranty is given.
@@ -60,15 +38,15 @@ uint8_t pot_slop = 12;	//don't send a message unless the pot
 
 ////////Potentiometer Variables - these are stored as bytes, converted
 // when they're read.
-// 0 is full reverse, 123 full stop, 255 full forward
-int bodyPot[3] = {900, 512, 512}; //the third is actually binary here, to spin the body.
-int bodyAtt[3] = {900, 512, 512}; //the current body attitude
-int bodyPotZero[3] = {900, 512, 512}; //everything perfectly centered
+// 0 is full reverse, 1023 full stop, 512 full forward
+int bodyPot[3] = {512, 512, 512}; //the third is actually binary here, to spin the body.
+int bodyAtt[3] = {512, 512, 512}; //the current body attitude
+int bodyPotZero[3] = {512, 512, 512}; //everything perfectly centered
 
 
-int headPot[3] = {900,900,900}; //the third is angle, for turning the head; it's in tens of degrees.
-int headAtt[3] = {900, 900, 900}; //the current head attitude
-int headPotZero[3] = {900, 900, 900}; //perfectly centered
+int headPot[3] = {512, 512, 512}; //the third is angle, for turning the head; it's in tens of degrees.
+int headAtt[3] = {512, 512, 512}; //the current head attitude
+int headPotZero[3] = {512, 512, 512}; //perfectly centered
 
 //the 16 button array is the trellis
 Adafruit_Trellis array = Adafruit_Trellis();
@@ -82,32 +60,33 @@ int controllerVoltage = 0;
 int bodyVoltage = 0;
 int headVoltage = 0;
 
-#define MIN_VOLTAGE 2.9
+uint8_t controllerLedIndex = 13;
+uint8_t bodyLedIndex = 14;
+uint8_t headLedIndex = 15;
 
-//the range of voltages is restricted - and TBD.
+
+//batteries can't be below MIN_VOLTAGE
+#define MIN_VOLTAGE 3
+//and we check them every INTERVAL
+#define BATTERY_CHECK_INTERVAL 10000
+
+unsigned long lastBatteryCheck = millis();
+
 
 void readBodyPot(uint8_t numSamples){
   int x=0;
   int y=0;
 
-  //Spin?
+  //Spin? This isn't used yet... or maybe ever.. so we read it as 512.
   bodyPot[2] = 512;
   
-  if(digitalRead(CONTROL_BODY_SPIN_LEFT_DPIN) == LOW){
-    bodyPot[2] -= 512;
-  }
-
-  if(digitalRead(CONTROL_BODY_SPIN_RIGHT_DPIN) == LOW){
-    bodyPot[2] += 512;
-  }
-    
-
   //XY movement
   for(uint8_t i=0; i<numSamples; i++){
     analogRead(CONTROL_BODY_POT_LR_APIN);
     x += analogRead(CONTROL_BODY_POT_LR_APIN);
     analogRead(CONTROL_BODY_POT_FR_APIN);
     y += analogRead(CONTROL_BODY_POT_FR_APIN);
+    
 #ifdef DEBUG
   Serial.println("readBodyPot: Raw");
   Serial.print("X: ");
@@ -118,13 +97,13 @@ void readBodyPot(uint8_t numSamples){
   }
 
   //cheap average
-  bodyPot[0] = map(x, 0, 1023*numSamples, 0, 1800);
-  bodyPot[1] = map(y, 0, 1023*numSamples, 0, 1024);
+  bodyPot[0] = map(x, 0, 1023*numSamples, 1, 1023);
+  bodyPot[1] = map(y, 0, 1023*numSamples, 1, 1023);
 
 
   //adjust to the true zero voltage of our pots
-  bodyPot[0] = constrain(bodyPot[0] + (bodyPotZero[0] - 900), 0, 1800);
-  bodyPot[1] = constrain(bodyPot[1] + (bodyPotZero[1] - 512), 0, 1024);
+  bodyPot[0] = constrain(bodyPot[0] + (bodyPotZero[0] - 512), 1, 1023);
+  bodyPot[1] = constrain(bodyPot[1] + (bodyPotZero[1] - 512), 1, 1023);
 
 #ifdef DEBUG
   Serial.println("readBodyPot: Values");
@@ -202,14 +181,14 @@ void readHeadPot(uint8_t numSamples){
   }
 
   //cheap way to calculate the average
-  headPot[0] = map(x, 0, 1023*numSamples, 0, 1800);
-  headPot[1] = map(y, 0, 1023*numSamples, 0, 1800);
-  headPot[2] = map(a, 0, 1023*numSamples, 0, 1800);
+  headPot[0] = map(x, 0, 1023*numSamples, 1, 1023);
+  headPot[1] = map(y, 0, 1023*numSamples, 1, 1023);
+  headPot[2] = map(a, 0, 1023*numSamples, 1, 1023);
 
   //account for the zero point
-  headPot[0] = constrain(headPot[0] + (headPotZero[0] - 900), 0, 1800);
-  headPot[1] = constrain(headPot[1] + (headPotZero[1] - 900), 0, 1800);
-  headPot[2] = constrain(headPot[2] + (headPotZero[2] - 900), 0, 1800);
+  headPot[0] = constrain(headPot[0] + (headPotZero[0] - 512), 1, 1023);
+  headPot[1] = constrain(headPot[1] + (headPotZero[1] - 512), 1, 1023);
+  headPot[2] = constrain(headPot[2] + (headPotZero[2] - 512), 1, 1023);
 }
 
 void readButtonArray(){
@@ -249,6 +228,8 @@ bool arraysDifferent(int pot[], int att[]){
   return false;
 }
 
+/******** Sending and Recieving Xbee! **********/
+
 //send an analog value to a pin
 void sendPWMPin(char dest, uint8_t pin, int val){
   Serial.print('$');
@@ -276,6 +257,18 @@ void sendSPin(char dest, uint8_t pin, int val){
   Serial.print(pad(val, 3));
 }
 
+// send a value back to the controller - called in any of the read
+//  functions.
+void sendValue(char sendChar, char label, int value){
+  Serial.print('$'+sendChar);
+  Serial.print(label);
+  if(label == 'A'){
+    Serial.print(pad(value, 4));
+  }else{
+    Serial.print(value);
+  }
+}
+
 //send speed and direction in a single function
 void sendSpeedDir(char dest, uint8_t speed_pin, uint8_t dir_pin, int val){
   if( val >= 512 ){
@@ -298,6 +291,92 @@ void sendAngle(char dest, uint8_t pin, int val){
   sendSPin(dest, pin, map(val, 0, 1800, 0, 180));
 }
 
+
+/*********** NEW PROTOCOL - do not use other send functions. *******/
+void sendBody(){
+  //looks like $BBX###Y###
+  uint8_t x = map(bodyAtt[0], 0, 1023, 0, 255);
+  uint8_t y = map(bodyAtt[1], 0, 1023, 0, 255);
+
+  Serial.print('$');
+  Serial.print(BODYCHAR);
+  Serial.print("BX");
+  Serial.print(pad(x, 3));
+  Serial.print("Y");
+  Serial.print(pad(y, 3));
+}
+
+void sendHead(){
+  //looks like $BHX###Y###A###
+  uint8_t x = map(headAtt[0], 0, 1023, 0, 255);
+  uint8_t y = map(headAtt[1], 0, 1023, 0, 255);
+  uint8_t a = map(headAtt[2], 0, 1023, 0, 255);
+
+  Serial.print('$');
+  Serial.print(BODYCHAR);
+  Serial.print("HX");
+  Serial.print(pad(x, 3));
+  Serial.print("Y");
+  Serial.print(pad(y, 3));
+  Serial.print("A");
+  Serial.print(pad(y, 3));
+}
+
+void sendStop(){
+  //need to send two - to the head and the body.
+  //Looks like $BSTOP and $HSTOP
+  //
+  //Only the first character (S) is actually read.  The rest is for debugging.
+  //If a human can read the chatter, a human can debug the chatter :-)
+  
+  Serial.print('$');
+  Serial.print(BODYCHAR);
+  Serial.print("STOP");
+
+  Serial.print('$');
+  Serial.print(HEADCHAR);
+  Serial.print("STOP");
+}
+
+void sendHeartbeat(){
+  //not sure what to send as a heartbeat, or how to handle it.  For now, we'll just send the current head and body positions.
+  sendBody();
+  sendHead();
+
+  //the heartbeat can then be implemented entirely in the body.  The head doesn't get a heartbeat, cuz it doesn't do anything crazy.
+  //like... move around.
+  //The point here is that if the body loses signal, it'll stop running away eventually.
+}
+
+void sendTrellisButton(uint8_t button){
+  //these go to the head
+  //looks like $HP##
+  Serial.print('$');
+  Serial.print(HEADCHAR);
+  Serial.print('P');
+  Serial.print(pad(button, 2));
+}
+
+void requestBodyBattery(){
+  Serial.print('$');
+  Serial.print(BODYCHAR);
+  Serial.print("RBATT");
+}
+
+void requestHeadBattery(){
+  Serial.print('$');
+  Serial.print(HEADCHAR);
+  Serial.print("RBATT");
+}
+
+//get results from battery questions, accept commands
+//right now, the battery's the only thing we care about.
+void readXbee(){
+  
+}
+
+/*********** END NEW PROTOCOL - do not use other send functions. *******/
+
 ////////Handlers for position changes
 void handleBodyPot(){
   if(!arraysDifferent(bodyPot, bodyAtt)){
@@ -311,16 +390,8 @@ void handleBodyPot(){
   //if any of them updated, great!  Update 'em all.
   memcpy( bodyAtt, bodyPot, sizeof(bodyAtt));
 
-
-  //and then send them all, for good measure.
-  //send the y - forward or reverse speed
-  sendSpeedDir(BODYCHAR, BODY_FR_SPEED_PIN, BODY_FR_DIR_PIN, bodyAtt[1]);
-
-  //send the x - which is a tilt, so gets converted to an angle
-  sendAngle(BODYCHAR, BODY_LR_ANGLE_PIN, bodyAtt[0]);
-
-  //send the spin
-  sendSpeedDir(BODYCHAR, BODY_SPIN_SPEED_PIN, BODY_SPIN_DIR_PIN, bodyAtt[2]);
+  //let the body know what's up
+  sendBody();
 }
 
 void handleHeadPot(){ //xya joystick
@@ -336,16 +407,7 @@ void handleHeadPot(){ //xya joystick
   memcpy( headAtt, headPot, sizeof(headAtt));
 
   //and then send them all, for good measure - this prevents creep,
-  //without evaluating the axes individually.
-
-  //send the x - which is a left/right tilt, so gets converted to an angle
-  sendAngle(BODYCHAR, HEAD_LR_ANGLE_PIN, bodyAtt[0]);
-  
-  //send the y - front or rear angle
-  sendAngle(BODYCHAR, HEAD_FR_ANGLE_PIN, bodyAtt[1]);
-
-  //send the spin
-  sendAngle(BODYCHAR, HEAD_SPIN_ANGLE_PIN, bodyAtt[2]);
+  sendHead();
 }
 
 void handleButtonArray(){ //funny noises in a big fancy grid
@@ -353,7 +415,7 @@ void handleButtonArray(){ //funny noises in a big fancy grid
   //these are the sound buttons :-)
   for(uint8_t i=0; i<12; i++){
     if(trellis.justPressed(i)){
-      //sendTrellisButton(i);
+      sendTrellisButton(i);
     }
   }
   
@@ -374,25 +436,74 @@ void shutdownButtonArray(){
 
 
 ////////BATTERY AND SHUTDOWN
+
+//reads the controller's voltage
+int checkBattery(){
+  //todo: actually read the battery voltage.
+  return MIN_VOLTAGE+.1;
+}
+
 // Used to safe the robot if the controller battery is low.
 // The controller monitors its battery, and shuts down the body and
 // head before it packs in itself.
 void checkBatteryForShutdown(){
 
-  //if battery voltage is too low, then:
-  if(5 > 6){
-    shutdownBody();
-    shutdownHead();
+  //if the controller's low, everything has to go down with it.
+  if(controllerVoltage < MIN_VOLTAGE){
+    sendStop();
+    shutdownButtonArray();
+
+    //blink the right trellis thinger annoyingly
+    for(uint8_t i=0; i<100; i++){
+      if(i%0 == 0){
+        trellis.setLED(controllerLedIndex);
+      }else{
+        trellis.clearLED(controllerLedIndex);
+      }
+
+      delay(50);
+    }
+
     shutdownController();
   }
-}
 
-void shutdownBody(){
-  //need to turn off the motors
-}
+  //if the body's low, blink the body, but we don't need to do anything else
+  //the body will prevent itself from moving on low batt
+  if(bodyVoltage < MIN_VOLTAGE){
+    //blink the right trellis thinger annoyingly
+    for(uint8_t i=0; i<10; i++){
+      if(i%0 == 0){
+        trellis.setLED(bodyLedIndex);
+      }else{
+        trellis.clearLED(bodyLedIndex);
+      }
 
-void shutdownHead(){
-  //probably don't need any shutdown here
+      delay(50);
+    }
+  }
+
+  //if the head is low, blink the head, but we don't need to worry any further.
+  if(headVoltage < MIN_VOLTAGE){
+    //blink the right trellis thinger annoyingly
+    for(uint8_t i=0; i<10; i++){
+      if(i%0 == 0){
+        trellis.setLED(headLedIndex);
+      }else{
+        trellis.clearLED(headLedIndex);
+      }
+
+      delay(50);
+    }
+  }
+  
+  
+  if(millis() > lastBatteryCheck + BATTERY_CHECK_INTERVAL){
+    //if battery voltage is too low, then:
+    if(5 > 6){
+      sendStop();
+      shutdownController();
+    }
+  }
 }
 
 void shutdownController(){
@@ -445,18 +556,6 @@ char InttoASCII(int i){
     return (char)(i + 0x37); // Minus 0x41 plus 0x0A
   else
     return -1;  
-}
-
-// send a value back to the controller - called in any of the read
-//  functions.
-void sendValue(char sendChar, char label, int value){
-  Serial.print('$'+sendChar);
-  Serial.print(label);
-  if(label == 'A'){
-    Serial.print(pad(value, 4));
-  }else{
-    Serial.print(value);
-  }
 }
 
 String pad(int number, byte length){
@@ -531,13 +630,19 @@ void loop()
   //check the battery voltage - shutdown if it's too low.
   checkBatteryForShutdown();
 
+  //read the xbee radio in
+  readXbee();
+
+  //read all of our sensors
   readBodyPot();
   readHeadPot();
   readButtonArray();
 
+  //send messages from our sensors
   handleBodyPot(); //this also handles the spin buttons
   handleHeadPot(); //xya joystick
   handleButtonArray();  //funny noises in a big fancy grid
+  
 
 #ifdef DEBUG
   Serial.println("Loop End - pause 3 sec");
