@@ -5,49 +5,7 @@ pins (analog or digital) using a remote Serial.
 Jim Lindblom @ SparkFun Electronics
 Original Creation Date: May 7, 2014
 
-This sketch requires an Serial, Serial Shield and another Serial tied to
-your computer (via a USB Explorer). You can use XCTU's console, or
-another serial terminal program (even the serial monitor!), to send
-commands to the Arduino. 
-
-
-This sketch has been augmented by Paul Chase to allow for multiple
-receivers.  Commands must be preceeded with $ to distinguish them
-from comments, then the single-character ReceiverChar.
-
-Also added the ability to control servos; this requires an array
-of servo pointers, initially null, but populated as servos are
-used.
-
-
-Example usage (send these commands from your computer terminal):
-    $Bw#nnn - analog WRITE pin # to nnn
-      e.g. $Bw6088 - write pin 6 to 88
-    $Bd#v   - digital WRITE pin # to v
-      e.g. $Bddh - Write pin 13 High
-    $Br#    - digital READ digital pin #
-      e.g. $Br3 - Digital read pin 3
-    $Ba#    - analog READ analog pin #
-      e.g. $Ba0 - Read analog pin 0
-    $Bs#aaa - servo WRITE pin # to angle aaa
-      e.g. $Bs5180 - turn servo on pin five to 180 degrees
-
-    - Use hex values for pins 10-13
-    - Upper or lowercase works
-    - Use 0, l, or L to write LOW
-    - Use 1, h, or H to write HIGH
-
-Hardware Hookup:
-  The Arduino shield makes all of the connections you'll need
-  between Arduino and Serial. Make sure the SWITCH IS IN THE 
-  "DLINE" POSITION.
-
-Development environment specifics:
-    IDE: Arduino 1.0.5
-    Hardware Platform: SparkFun RedBoard
-    Serial Shield & Serial Series 1 1mW (w/ whip antenna)
-        Serial USB Explorer connected to computer with another
-          Serial Series 1 1mW connected to that.
+Heavily adapted by Paul Chase, but I started from Jim's sketch :-)
 
 This code is beerware; if you see me (or any other SparkFun 
 employee) at the local, and you've found our code helpful, please 
@@ -55,11 +13,8 @@ buy us a round!
 
 Distributed as-is; no warranty is given.
 *****************************************************************/
-// SoftwareSerial is used to communicate with the Serial
-//#include <SoftwareSerial.h>
-// Trying it using hardware serial instead to avoid conflict with
-//  the servo library.
-#include <Servo.h>
+// no software serial, body's going to need servos eventually and
+//it would conflict.
 #include "configuration.h"
 
 //comment this out to turn serial debugging off.
@@ -67,81 +22,111 @@ Distributed as-is; no warranty is given.
 //Arduino serial monitor.
 #define DEBUG 1
 
+//the max chars should only be an issue with debugging on :-)
+#define MAX_SERIAL_WAIT 250
+#define MAX_CHARS_TO_READ 25
 
-//SoftwareSerial Serial(2, 3); // Arduino RX, TX (Serial Dout, Din)
 
-#define NUMPINS 14
-Servo *servoPins[NUMPINS];  	//array of servo pins - to keep
-				//track of them quickly.
+////////Battery Voltage
+//batteries can't be below MIN_VOLTAGE
+//that's just over 3 volts in 10 bit.
+#define MIN_VOLTAGE 616
+
+//and we check them every INTERVAL
+#define BATTERY_CHECK_INTERVAL 10000
+
+// We track battery voltage for the body, head and controller itself.
+int controllerVoltage = MIN_VOLTAGE + 1;
+int bodyVoltage = MIN_VOLTAGE + 1;
+int headVoltage = MIN_VOLTAGE + 1;
 
 
 //shutdown after 10 seconds of no signal
 #define TIMEOUT 10000
-int lastHeartbeat;
+unsigned long lastHeartbeat;  //this is updated every time we receive a command.
 
+
+void initPins(){
+}
 
 void setup()
 {
   // Initialize Serial Software Serial port. Make sure the baud
   // rate matches your Serial setting (9600 is default).
-  Serial.begin(9600); 
-
-  //make all the pointers 0
-  for(uint8_t i=0; i<NUMPINS; i++){
-    servoPins[i] = 0;
-  }
+  Serial.begin(9600);
 
 #ifdef DEBUG
   printMenu(); // Print a helpful menu
 #endif
 
+  initPins();
+
   lastHeartbeat = millis();
 }
 
 void loop()
-{ 
-  //TODO: check battery voltage, shut down if it's too low
+{
+  checkBatteryForShutdown();
+  
+  handleXbee();
+  
+  readBodyAccel();
+  readHeadAccel();
+  
+  updateBodyMotors();
+  updateHeadMotors();
+}
 
-  //make sure we haven't timed out
-  checkHeartbeat();
-
-  // In loop() we continously check to see if a command has been
-  //  received.
-  if (Serial.available())
-  {
-    char c = Serial.read();
-    if(c == '$'){  //commands start with a $ sign
-      waitForSerial(1); //wait for the next character
-      c = Serial.read();
-      if( c == BODYCHAR){  //the code matches
-        waitForSerial(1);  //wait for the next character
-	      
-	      c = Serial.read(); //finally we get the command
-        switch (c){
-          case 'w':      // If received 'w'
-          case 'W':      // or 'W'
-            writePWMPin(); // Write analog pin
-          break;
-          case 'd':      // If received 'd'
-          case 'D':      // or 'D'
-            writeDPin(); // Write digital pin
-          break;
-          case 'r':      // If received 'r'
-          case 'R':      // or 'R'
-            readDPin();  // Read digital pin
-          break;
-          case 'a':      // If received 'a'
-          case 'A':      // or 'A'
-            readAPin();  // Read analog pin
-          break;
-          case 's':
-          case 'S':      //servo pin
-            writeSPin();
-          break;
+//process the xbee serial
+void handleXbee(){
+  
+  //this will consume many characters - maybe too many.
+  //So we set a max.
+  int chars = 0;
+  char sender = BODYCHAR;  //set it to us, in case it becomes necessary
+  
+  //WAIT for at least 4 characters to be in the buffer before doing anything!
+  while((Serial.available() > 3) && (chars < MAX_CHARS_TO_READ)){
+    char c = Serial.read();  //three chars left
+    chars++;
+    
+    if(c == '$'){  //control char
+      c = Serial.read();  //two chars left
+      chars++;
+      
+      if(c == BODYCHAR){  //to char - we only care if it's for us
+        sender = Serial.read();  //from char - record who sent the message
+        chars++;
+        
+        c = Serial.read();  //command char - this is the last guaranteed char
+        chars++;
+        
+        switch(c){
+          case 'S': //stop char!
+            if(sender == CONTROLCHAR){
+              bodyDisabled = 1;
+            }
+          return;
+          
+          case 'B': //adjust the body position
+            readBodyCommand();
+          return;
+          
+          case 'H': //move the head about
+            //todo on this one is to make a head!
+          return;
         }
       }
     }
+    
+    if(chars > MAX_CHARS_TO_READ){
+      return;
+    }
   }
+}
+
+void readBodyCommand(){
+  //figure out what the controller wants us to do :-)
 }
 
 //turn off all the pins
@@ -171,7 +156,7 @@ boolean waitForSerial(){
     checkHeartbeat();
   }while(Serial.available() < 1);
 
-  //reset on each char recieved
+  //reset on each char recieved  
   lastHeartbeat = millis();
   return true;
 }

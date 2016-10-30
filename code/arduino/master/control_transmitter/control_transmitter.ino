@@ -57,10 +57,17 @@ uint8_t tellis_INTPIN = 0;  //the interrupt pin - we're not going to use it, jus
 //also need to connect the SDA and SCL pins :-)
 
 ////////Battery Voltage
-// We also track battery voltage for the body, head and controller itself.
-int controllerVoltage = 0;
-int bodyVoltage = 0;
-int headVoltage = 0;
+//batteries can't be below MIN_VOLTAGE
+//that's just over 3 volts in 10 bit.
+#define MIN_VOLTAGE 616
+
+//and we check them every INTERVAL
+#define BATTERY_CHECK_INTERVAL 10000
+
+// We track battery voltage for the body, head and controller itself.
+int controllerVoltage = MIN_VOLTAGE + 1;
+int bodyVoltage = MIN_VOLTAGE + 1;
+int headVoltage = MIN_VOLTAGE + 1;
 
 uint8_t headDisabled = 0;
 uint8_t bodyDisabled = 0;
@@ -70,10 +77,7 @@ uint8_t bodyDisabled = 0;
 #define bodyLedIndex 14
 #define headLedIndex 15
 
-//batteries can't be below MIN_VOLTAGE
-#define MIN_VOLTAGE 3
-//and we check them every INTERVAL
-#define BATTERY_CHECK_INTERVAL 10000
+
 
 unsigned long lastBatteryCheck = millis();
 
@@ -167,6 +171,11 @@ void initHeadPot(){
 
   memcpy( headPotZero, headPot, sizeof(headPotZero));
   memcpy( headAtt, headPot, sizeof(headAtt));
+}
+
+void initPins(){
+  //set each pin to input/output as needed.
+  
 }
 
 void readHeadPot(){
@@ -383,37 +392,46 @@ void requestHeadBattery(){
 //get results from battery questions, accept commands
 //right now, the battery's the only thing we care about.
 //This function will consume ONE command, or MAX_CHARS_TO_READ characters before returning.
-void readXbee(){
+void handleXbee(){
   
   //this will consume many characters - maybe too many.
   //So we set a max.
   int chars = 0;
+  char sender = CONTROLCHAR;  //set it to us, in case it becomes necessary
+  
   //WAIT for at least 4 characters to be in the buffer before doing anything!
   while((Serial.available() > 3) && (chars < MAX_CHARS_TO_READ)){
     char c = Serial.read();  //three chars left
     chars++;
     
-    if(c == '$'){  //look for a command :-)
+    if(c == '$'){  //control char
       c = Serial.read();  //two chars left
       chars++;
       
-      if(c == CONTROLCHAR){  //whoa, the command might be for us!
-        c = Serial.read();  //there's still one character in there.
+      if(c == CONTROLCHAR){  //to char - we only care if it's for us
+        sender = Serial.read();  //record who sent the message
+        chars++;
+        
+        c = Serial.read();  //this is the last guaranteed char
         chars++;
         
         switch(c){
           case 'S': //stop char!
-            c = Serial.read();
-            if(c == BODYCHAR){
+            if(sender == BODYCHAR){
               bodyDisabled = 1;
             }
-            if(c == HEADCHAR){
+            if(sender == HEADCHAR){
               headDisabled = 1;
             }
-            //if it's the head, whatevs.
           return;
           
           case 'V': //returning a value to read
+            if(sender == BODYCHAR){
+              bodyVoltage = readVoltage();
+            }
+            if(sender == HEADCHAR){
+              headVoltage = readVoltage();
+            }
           return;
         }
       }
@@ -439,6 +457,15 @@ char readSerialBlocking(){
   }
   
   return Serial.read();
+}
+
+int readVoltage(){
+  //grab three chars from the serial, and convert them to an int
+  long voltage = 100*ASCIItoInt(readSerialBlocking());
+  voltage += 10*ASCIItoInt(readSerialBlocking());
+  voltage += 1*ASCIItoInt(readSerialBlocking());
+  
+  return voltage;
 }
 
 
@@ -526,10 +553,19 @@ void shutdownButtonArray(){
 
 ////////BATTERY AND SHUTDOWN
 
+int readBattery(uint8_t numSamples){
+  int voltage = 0;
+  
+  for(uint8_t i = 0; i<numSamples; i++){
+    voltage += analogRead(CONTROL_BATTERY_MONITOR_APIN);
+  }
+  
+  return map(voltage, 0, 1023*numSamples, 1, 1023);
+}
+
 //reads the controller's voltage
-int checkBattery(){
-  //todo: actually read the battery voltage.
-  return MIN_VOLTAGE+.1;
+int readBattery(){
+  return readBattery(3);
 }
 
 // Used to safe the robot if the controller battery is low.
@@ -572,6 +608,7 @@ void checkBatteryForShutdown(){
   if(millis() > lastBatteryCheck + BATTERY_CHECK_INTERVAL){
     requestBodyBattery();
     requestHeadBattery();
+    controllerVoltage = readBattery();
     lastBatteryCheck = millis();
   }
 }
@@ -656,7 +693,7 @@ void printMenu()
   Serial.println(F("$BCSTOP             -> Full stop to the body"));
   Serial.println(F("$HCSTOP             -> Full stop to the head"));
   Serial.println(F("$BCRBATT            -> Have the body send us its battery voltage"));
-  Serial.println(F("$CBVB***            -> Here's that voltage you wanted, controlleer"));
+  Serial.println(F("$CBV***            -> Here's that voltage you wanted, controlleer"));
   Serial.println(F("$HCP02              -> Play sound effect 02 - goes from 00 to 11"));
   Serial.println(F("  e.g. a0 - Read analog pin 0"));
   Serial.println();
@@ -680,6 +717,8 @@ void setup()
 
   //head pot: three axes
   initHeadPot();
+  
+  initPins();
 
 #ifdef DEBUG
   printMenu(); // Print a helpful menu
@@ -695,7 +734,7 @@ void loop()
   checkBatteryForShutdown();
 
   //read the xbee radio in
-  readXbee();
+  handleXbee();
 
   //read all of our sensors
   readBodyPot();
