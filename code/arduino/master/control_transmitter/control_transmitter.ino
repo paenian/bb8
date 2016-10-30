@@ -30,6 +30,8 @@ Distributed as-is; no warranty is given.
 //Arduino serial monitor.
 #define DEBUG 1
 
+#define MAX_SERIAL_WAIT 250
+#define MAX_CHARS_TO_READ 25
 
 uint8_t pot_slop = 12;	//don't send a message unless the pot
 			//reading is + or - this value.  Pots are 10 bit, so 1024 values.
@@ -60,10 +62,13 @@ int controllerVoltage = 0;
 int bodyVoltage = 0;
 int headVoltage = 0;
 
-uint8_t controllerLedIndex = 13;
-uint8_t bodyLedIndex = 14;
-uint8_t headLedIndex = 15;
+uint8_t headDisabled = 0;
+uint8_t bodyDisabled = 0;
 
+#define allStopLedIndex 12
+#define controllerLedIndex 13
+#define bodyLedIndex 14
+#define headLedIndex 15
 
 //batteries can't be below MIN_VOLTAGE
 #define MIN_VOLTAGE 3
@@ -99,7 +104,6 @@ void readBodyPot(uint8_t numSamples){
   //cheap average
   bodyPot[0] = map(x, 0, 1023*numSamples, 1, 1023);
   bodyPot[1] = map(y, 0, 1023*numSamples, 1, 1023);
-
 
   //adjust to the true zero voltage of our pots
   bodyPot[0] = constrain(bodyPot[0] + (bodyPotZero[0] - 512), 1, 1023);
@@ -294,12 +298,13 @@ void sendAngle(char dest, uint8_t pin, int val){
 
 /*********** NEW PROTOCOL - do not use other send functions. *******/
 void sendBody(){
-  //looks like $BBX###Y###
+  //looks like $BCBX###Y###
   uint8_t x = map(bodyAtt[0], 0, 1023, 0, 255);
   uint8_t y = map(bodyAtt[1], 0, 1023, 0, 255);
 
   Serial.print('$');
   Serial.print(BODYCHAR);
+  Serial.print(CONTROLCHAR);
   Serial.print("BX");
   Serial.print(pad(x, 3));
   Serial.print("Y");
@@ -307,13 +312,14 @@ void sendBody(){
 }
 
 void sendHead(){
-  //looks like $BHX###Y###A###
+  //looks like $BCHX###Y###A###
   uint8_t x = map(headAtt[0], 0, 1023, 0, 255);
   uint8_t y = map(headAtt[1], 0, 1023, 0, 255);
   uint8_t a = map(headAtt[2], 0, 1023, 0, 255);
 
   Serial.print('$');
   Serial.print(BODYCHAR);
+  Serial.print(CONTROLCHAR);
   Serial.print("HX");
   Serial.print(pad(x, 3));
   Serial.print("Y");
@@ -324,17 +330,19 @@ void sendHead(){
 
 void sendStop(){
   //need to send two - to the head and the body.
-  //Looks like $BSTOP and $HSTOP
+  //Looks like $BCSTOP and $HCSTOP
   //
   //Only the first character (S) is actually read.  The rest is for debugging.
   //If a human can read the chatter, a human can debug the chatter :-)
   
   Serial.print('$');
   Serial.print(BODYCHAR);
+  Serial.print(CONTROLCHAR);
   Serial.print("STOP");
 
   Serial.print('$');
   Serial.print(HEADCHAR);
+  Serial.print(CONTROLCHAR);
   Serial.print("STOP");
 }
 
@@ -353,6 +361,7 @@ void sendTrellisButton(uint8_t button){
   //looks like $HP##
   Serial.print('$');
   Serial.print(HEADCHAR);
+  Serial.print(CONTROLCHAR);
   Serial.print('P');
   Serial.print(pad(button, 2));
 }
@@ -360,20 +369,78 @@ void sendTrellisButton(uint8_t button){
 void requestBodyBattery(){
   Serial.print('$');
   Serial.print(BODYCHAR);
+  Serial.print(CONTROLCHAR);
   Serial.print("RBATT");
 }
 
 void requestHeadBattery(){
   Serial.print('$');
   Serial.print(HEADCHAR);
+  Serial.print(CONTROLCHAR);
   Serial.print("RBATT");
 }
 
 //get results from battery questions, accept commands
 //right now, the battery's the only thing we care about.
+//This function will consume ONE command, or MAX_CHARS_TO_READ characters before returning.
 void readXbee(){
   
+  //this will consume many characters - maybe too many.
+  //So we set a max.
+  int chars = 0;
+  //WAIT for at least 4 characters to be in the buffer before doing anything!
+  while((Serial.available() > 3) && (chars < MAX_CHARS_TO_READ)){
+    char c = Serial.read();  //three chars left
+    chars++;
+    
+    if(c == '$'){  //look for a command :-)
+      c = Serial.read();  //two chars left
+      chars++;
+      
+      if(c == CONTROLCHAR){  //whoa, the command might be for us!
+        c = Serial.read();  //there's still one character in there.
+        chars++;
+        
+        switch(c){
+          case 'S': //stop char!
+            c = Serial.read();
+            if(c == BODYCHAR){
+              bodyDisabled = 1;
+            }
+            if(c == HEADCHAR){
+              headDisabled = 1;
+            }
+            //if it's the head, whatevs.
+          return;
+          
+          case 'V': //returning a value to read
+          return;
+        }
+      }
+    }
+    
+    if(chars > MAX_CHARS_TO_READ){
+      return;
+    }
+  }
 }
+
+//simple code to block while reading the serial bus.
+char readSerialBlocking(){
+  unsigned long start = millis();
+  
+  while(Serial.available() == 0){
+    if(millis()-start > MAX_SERIAL_WAIT){
+#ifdef DEBUG
+      Serial.println("Timeout waiting for character!");
+#endif
+      return -1;
+    }
+  }
+  
+  return Serial.read();
+}
+
 
 /*********** END NEW PROTOCOL - do not use other send functions. *******/
 
@@ -420,6 +487,28 @@ void handleButtonArray(){ //funny noises in a big fancy grid
   }
   
   //the other four buttons are indicators, and the kill switch.
+  //check for disabled stuff, and flash the appropriate button.
+  if(trellis.justPressed(allStopLedIndex)){
+    sendStop();
+    shutdownController(); 
+  }
+  
+  //the other buttons can't be pressed yet, but they blink if something's dead.
+  if(headDisabled == 1){
+    trellis.setLED(headLedIndex);
+    trellis.writeDisplay();
+    delay(125);
+    trellis.clrLED(headLedIndex);
+    trellis.writeDisplay(); 
+  }
+  
+  if(bodyDisabled == 1){
+    trellis.setLED(bodyLedIndex);
+    trellis.writeDisplay();
+    delay(125);
+    trellis.clrLED(bodyLedIndex);
+    trellis.writeDisplay(); 
+  }
   
 }
 
@@ -458,7 +547,7 @@ void checkBatteryForShutdown(){
       if(i%0 == 0){
         trellis.setLED(controllerLedIndex);
       }else{
-        trellis.clearLED(controllerLedIndex);
+        trellis.clrLED(controllerLedIndex);
       }
 
       delay(50);
@@ -470,39 +559,20 @@ void checkBatteryForShutdown(){
   //if the body's low, blink the body, but we don't need to do anything else
   //the body will prevent itself from moving on low batt
   if(bodyVoltage < MIN_VOLTAGE){
-    //blink the right trellis thinger annoyingly
-    for(uint8_t i=0; i<10; i++){
-      if(i%0 == 0){
-        trellis.setLED(bodyLedIndex);
-      }else{
-        trellis.clearLED(bodyLedIndex);
-      }
-
-      delay(50);
-    }
+    bodyDisabled = 1;
   }
 
   //if the head is low, blink the head, but we don't need to worry any further.
   if(headVoltage < MIN_VOLTAGE){
-    //blink the right trellis thinger annoyingly
-    for(uint8_t i=0; i<10; i++){
-      if(i%0 == 0){
-        trellis.setLED(headLedIndex);
-      }else{
-        trellis.clearLED(headLedIndex);
-      }
-
-      delay(50);
-    }
+    headDisabled = 1;
   }
   
-  
+  //if it's been a while since the last check, reread the voltages.
+  //This only asks for them - they're read in the serial message handling area.
   if(millis() > lastBatteryCheck + BATTERY_CHECK_INTERVAL){
-    //if battery voltage is too low, then:
-    if(5 > 6){
-      sendStop();
-      shutdownController();
-    }
+    requestBodyBattery();
+    requestHeadBattery();
+    lastBatteryCheck = millis();
   }
 }
 
@@ -512,11 +582,6 @@ void shutdownController(){
   
   //disconnect the battery so it doesn't get too low
   delay(10000);
-
-  //first shut down the head and body - don't want it to escape.
-  //todo: implement a heartbeat for the body
-  //OR we could do it like gcode commands - so that the body executes the last command, for X seconds?
-  //just have the body use a 2-second timeout - if no commands recieved, kill the motors.
 }
 
 // ASCIItoHL
@@ -575,27 +640,26 @@ String pad(int number, byte length){
 // A big ol' string of Serial prints that print a usage menu over
 // to the other Serial.
 void printMenu()
-{//TODO: update this :-/
+{
 #ifdef DEBUG
   // Everything is "F()"'d -- which stores the strings in flash.
   // That'll free up SRAM for more importanat stuff.
   Serial.println();
-  Serial.println(F("Arduino Serial Remote Control!"));
+  Serial.println(F("Arduino Serial BB8 Control!"));
   Serial.println(F("============================"));
   Serial.println(F("Usage: "));
-  Serial.println(F("w#nnn - analog WRITE pin # to nnn"));
-  Serial.println(F("  e.g. w6088 - write pin 6 to 88"));
-  Serial.println(F("d#v   - digital WRITE pin # to v"));
-  Serial.println(F("  e.g. ddh - Write pin 13 High"));
-  Serial.println(F("r#    - digital READ digital pin #"));
-  Serial.println(F("  e.g. r3 - Digital read pin 3"));
-  Serial.println(F("a#    - analog READ analog pin #"));
+  Serial.println(F("Command format is $, TO_CHAR, FROM_CHAR, COMMAND*"));
+  Serial.println(F("All numbers are fixed length, zero padded"));
+  Serial.println();
+  Serial.println(F("$BCBX127Y127        -> to Body from Controller Body motion X127 Y127"));
+  Serial.println(F("$BCHX***Y***A***    -> Move head - note X, Y and Angle of Rotation."));
+  Serial.println(F("$BCSTOP             -> Full stop to the body"));
+  Serial.println(F("$HCSTOP             -> Full stop to the head"));
+  Serial.println(F("$BCRBATT            -> Have the body send us its battery voltage"));
+  Serial.println(F("$CBVB***            -> Here's that voltage you wanted, controlleer"));
+  Serial.println(F("$HCP02              -> Play sound effect 02 - goes from 00 to 11"));
   Serial.println(F("  e.g. a0 - Read analog pin 0"));
   Serial.println();
-  Serial.println(F("- Use hex values for pins 10-13"));
-  Serial.println(F("- Upper or lowercase works"));
-  Serial.println(F("- Use 0, l, or L to write LOW"));
-  Serial.println(F("- Use 1, h, or H to write HIGH"));
   Serial.println(F("============================"));  
   Serial.println();
 #endif
