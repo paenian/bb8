@@ -41,8 +41,21 @@ int bodyVoltage = MIN_VOLTAGE + 1;
 int headVoltage = MIN_VOLTAGE + 1;
 
 
+//position variables
+int bodyPot[3] = {512, 512, 512};   //this is the potentiometer reading from the controller.
+                                    //The third one isn't used as yet, but it's for spinning bb8.
+int bodyState[3] = {512, 512, 512}; //what the body is currently doing
+
+uint8_t bodyDisabled = 0;
+
+//pid settings... the head might need its own pid?  it shouldn't, though...
+#define BODY_PROPORTIONAL 2
+#define BODY_INTEGRAL .25
+#define BODY_DIFFERENTIAL .25
+
+
 //shutdown after 10 seconds of no signal
-#define TIMEOUT 10000
+#define HEARTBEAT_TIMEOUT 10000
 unsigned long lastHeartbeat;  //this is updated every time we receive a command.
 
 
@@ -70,11 +83,20 @@ void loop()
   
   handleXbee();
   
-  readBodyAccel();
-  readHeadAccel();
+  handleHeartbeat();
+  
+  //readBodyAccel();
+  //readHeadAccel();
   
   updateBodyMotors();
   updateHeadMotors();
+}
+
+void handleHeartbead(){
+  if(millis() - lastHeartbeat > HEARTBEAT_TIMEOUT){
+    //we don't need to panic, just stop BB8 from running away.
+    bodyPot = {512, 512, 512};
+  }
 }
 
 //process the xbee serial
@@ -101,6 +123,8 @@ void handleXbee(){
         c = Serial.read();  //command char - this is the last guaranteed char
         chars++;
         
+        lastHeartbeat = millis();        
+        
         switch(c){
           case 'S': //stop char!
             if(sender == CONTROLCHAR){
@@ -115,6 +139,12 @@ void handleXbee(){
           case 'H': //move the head about
             //todo on this one is to make a head!
           return;
+          
+          case 'R': //request for information
+            if(sender == CONTROLCHAR){
+              sendInfoController();
+            }
+          return;
         }
       }
     }
@@ -127,6 +157,39 @@ void handleXbee(){
 
 void readBodyCommand(){
   //figure out what the controller wants us to do :-)
+  //So far, we've consumed the characters $BCB
+  //Next is X###Y###frea
+  
+
+  //if there's a problem with the read, we'll just ignore the command.
+  //So set a sane default
+  int newPot[3] = {512, 512, 512};
+  
+#ifdef DEBUG
+  Serial.println("body: readBodyCommand");
+#endif
+
+  if(readSerialBlocking() != 'X'){
+#ifdef DEBUG
+  Serial.println("body: readBodyCommand: Bad format, no X");
+#endif
+    return;
+  }
+ 
+  //read x
+  newPot[0] = readInteger(3);
+  
+  if(readSerialBlocking() != 'X'){
+#ifdef DEBUG
+  Serial.println("body: readBodyCommand: Bad format, no Y");
+#endif
+    return;
+  }
+  
+  //read y
+  newPot[1] = readInteger(3);
+  
+  memcpy( bodyPot, newPot, sizeof(bodyPot));
 }
 
 //turn off all the pins
@@ -134,215 +197,15 @@ void Stop(){
 #ifdef DEBUG
   Serial.println("Body: Stopping All Motors");
 #endif
-  
-  for(uint8_t i = 0; i<NUMPINS; i++){
-    digitalWrite(i, LOW);
-  }
+
+  bodyPot = {512, 512, 512};
+  bodyState = {512, 512, 512};
+  bodyDisabled = 1;  
 
 #ifdef DEBUG
   Serial.println("Body: Stopped All Motors");
 #endif
-}
-
-void checkHeartbeat(){
-  if(millis() > lastHeartbeat + TIMEOUT){
-    Stop();
-  }
-}
-
-//this waits for ONE character - BLOCKING
-boolean waitForSerial(){
-  do{
-    checkHeartbeat();
-  }while(Serial.available() < 1);
-
-  //reset on each char recieved  
-  lastHeartbeat = millis();
-  return true;
-}
-
-//this waits for <chars> number of characters - BLOCKING - to be available on the serial bus
-//while making sure we don't timeout from lack of communication.
-boolean waitForSerial(uint8_t chars){
-  while(Serial.available() < chars){
-    waitForSerial();
-  }
-  return true;
-}
-
-// write servo pin
-// send S or s to enter
-// then pin #
-// then 3 digit angle
-void writeSPin()
-{
-  while (waitForSerial(4));	//this just waits til the digits come in
-
-  char pin  = ASCIItoInt(Serial.read());
-  int angle = ASCIItoInt(Serial.read()) * 100 +
-              ASCIItoInt(Serial.read()) * 10 +
-	      ASCIItoInt(Serial.read());
-
-  angle = constrain(angle, 0, 180);
-
-#ifdef DEBUG
-  Serial.print("Body: servo ");
-  Serial.print(pin);
-  Serial.print(" to <");
-  Serial.println(angle);
-#endif
-
-  //todo: set this up.
-  //Could do a linked list of servos, or maybe an array of servo pointers
-  //array of servo pointers, populated by pin number!
-  //need to check if a pointer is null... I think an unset pointer is just
-  //random.
-
-  
-  //first, see if it exists
-  if(servoPins[pin] == 0){
-    //create the servo, since it doesn't exist :-)
-    servoPins[pin] = new Servo();
-    servoPins[pin] -> attach(pin);
-
-#ifdef DEBUG
-  Serial.print("Body: created servo ");
-  Serial.print(pin);
-  Serial.print(" at memory location ");
-  Serial.println(int(servoPins[pin]));
-#endif
-  }
-
-  //and finally, write the angle to the servo
-  servoPins[pin] -> write(angle);
-}
-
-// Write Digital Pin
-// Send a 'd' or 'D' to enter.
-// Then send a pin #
-//   Use numbers for 0-9, and hex (a, b, c, or d) for 10-13
-// Then send a value for high or low
-//   Use h, H, or 1 for HIGH. Use l, L, or 0 for LOW
-void writeDPin()
-{
-  waitForSerial(2); // Wait for pin and value to become available
-  char pin = Serial.read();
-  char hl = ASCIItoHL(Serial.read());
-
-#ifdef DEBUG
-  // Print a message to let the control know of our intentions:
-  Serial.print("\nBody: digital ");
-  Serial.print(pin);
-  Serial.print(" to ");
-  Serial.println((hl ? "HIGH" : "LOW"));
-#endif
-
-  pin = ASCIItoInt(pin); // Convert ASCCI to a 0-13 value
-  pinMode(pin, OUTPUT); // Set pin as an OUTPUT
-  digitalWrite(pin, hl); // Write pin accordingly
-}
-
-// Write Analog Pin
-// Send 'w' or 'W' to enter
-// Then send a pin #
-//   Use numbers for 0-9, and hex (a, b, c, or d) for 10-13
-//   (it's not smart enough (but it could be) to error on
-//    a non-analog output pin)
-// Then send a 3-digit analog value.
-//   Must send all 3 digits, so use leading zeros if necessary.
-void writePWMPin()
-{
-  waitForSerial(4); // Wait for pin and three value numbers to be received
-  
-  char pin = Serial.read(); // Read in the pin number
-  int val = ASCIItoInt(Serial.read()) * 100; // Convert next three
-  val += ASCIItoInt(Serial.read()) * 10;     // chars to a 3-digit
-  val += ASCIItoInt(Serial.read());          // number.
-  val = constrain(val, 0, 255); // Constrain that number.
-
-#ifdef DEBUG
-  // Print a message to let the control know of our intentions:
-  Serial.print("\nBody: analog ");
-  Serial.print(pin);
-  Serial.print(" to ");
-  Serial.println(val);
-#endif
-
-  pin = ASCIItoInt(pin); // Convert ASCCI to a 0-13 value
-  pinMode(pin, OUTPUT); // Set pin as an OUTPUT
-  analogWrite(pin, val); // Write pin accordingly
-}
-
-// Read Digital Pin
-// Send 'r' or 'R' to enter
-// Then send a digital pin # to be read
-// The Arduino will print the digital reading of the pin to Serial.
-void readDPin()
-{
-  int val = 0;
-
-  waitForSerial(1); // Wait for pin # to be available.
-
-  char pin = Serial.read(); // Read in the pin value
-
-  pin = ASCIItoInt(pin); // Convert pin to 0-13 value
-  pinMode(pin, INPUT); // Set as input
-  
-  val = digitalRead(pin);
-
-  //send the character
-  sendValue('D', val);
-
-
-//print a debug message
-#ifdef DEBUG
-  Serial.print("\nBody: dRead ");
-  Serial.print(pin);
-  Serial.print(" -> ");
-  Serial.println(val);
-#endif
-}
-
-// Read Analog Pin
-// Send 'a' or 'A' to enter
-// Then send an analog pin # to be read.
-// The Arduino will print the analog reading of the pin to Serial.
-void readAPin()
-{
-  int val = 0;
-
-  waitForSerial(1); // Wait for pin # to be available
-  
-  char pin = Serial.read(); // read in the pin value
-
-  pin = ASCIItoInt(pin); // Convert pin to 0-6 value
-
-  val = analogRead(pin);
-
-  //send it back
-  sendValue('A', val);
-
-  //debug
-#ifdef DEBUG
-  Serial.print("\nBody: aRead ");
-  Serial.print(pin);
-  Serial.print(" -> ");
-  Serial.println(val);
-#endif
-}
-
-// ASCIItoHL
-// Helper function to turn an ASCII value into either HIGH or LOW
-int ASCIItoHL(char c)
-{
-  // If received 0, byte value 0, L, or l: return LOW
-  // If received 1, byte value 1, H, or h: return HIGH
-  if ((c == '0') || (c == 0) || (c == 'L') || (c == 'l'))
-    return LOW;
-  else if ((c == '1') || (c == 1) || (c == 'H') || (c == 'h'))
-    return HIGH;
-  else
-    return -1;
+  delay(10000);
 }
 
 // ASCIItoInt
@@ -359,16 +222,31 @@ int ASCIItoInt(char c)
     return -1;
 }
 
-// send a value back to the controller - called in any of the read
-//  functions.
-void sendValue(char label, int val){
-  Serial.print('$'+CONTROLCHAR);
-  Serial.print(label);
-  if(label == 'A'){
-    Serial.print(pad(val, 4));
-  }else{
-    Serial.print(val);
+//simple code to block while reading the serial bus.
+char readSerialBlocking(){
+  unsigned long start = millis();
+  
+  while(Serial.available() == 0){
+    if(millis()-start > MAX_SERIAL_WAIT){
+#ifdef DEBUG
+      Serial.println("Timeout waiting for character!");
+#endif
+      return -1;
+    }
   }
+  
+  return Serial.read();
+}
+
+int readInteger(uint8_t digits){
+  //todo: throw an error if we can't read the serial
+  int integer = 0;
+  
+  for(int multiplier = 10^(digits-1); multiplier > 0; multiplier = multiplier/10){
+    integer += multiplier*ASCIItoInt(readSerialBlocking());
+  }
+  
+  return integer;
 }
 
 String pad(int number, byte len){
