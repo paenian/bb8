@@ -153,9 +153,8 @@ void initBodyPot(){
   pinMode(CONTROL_BODY_SPIN_LEFT_DPIN, INPUT_PULLUP);
   pinMode(CONTROL_BODY_SPIN_RIGHT_DPIN, INPUT_PULLUP);
 
-  for(uint8_t i=1; i<3; i++)
+  for(uint8_t i=0; i<3; i++)
     bodyPotZero[i] = 512;
-  bodyPotZero[0] = 900;
 
   readBodyPot(5);
 
@@ -165,7 +164,7 @@ void initBodyPot(){
 
 void initHeadPot(){
   for(uint8_t i=0; i<3; i++)
-    headPotZero[i] = 900;
+    headPotZero[i] = 512;
 
   readHeadPot(5);
 
