@@ -78,11 +78,16 @@
  *  What's left:
  *   No more PWM!  Plenty of analog in, D4...
 */
-#define BODY_LR_ANGLE_PIN 11
-#define BODY_FR_SPEED_PIN 10
-#define BODY_FR_DIR_PIN 12
-#define BODY_SPIN_SPEED_PIN 3
-#define BODY_SPIN_DIR_PIN 2
+#define BODY_X0_DIR_PIN 2
+#define BODY_X0_SPEED_PIN 3
+#define BODY_X1_DIR_PIN 4
+#define BODY_X1_SPEED_PIN 5
+#define BODY_Y0_DIR_PIN 7
+#define BODY_Y0_SPEED_PIN 6
+#define BODY_Y1_DIR_PIN 8
+#define BODY_Y1_SPEED_PIN 9
+
+
 /*
 *** Head Pins
  *  WaveShield - SPI - D11

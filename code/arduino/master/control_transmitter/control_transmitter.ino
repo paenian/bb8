@@ -28,7 +28,7 @@ Distributed as-is; no warranty is given.
 //comment this out to turn serial debugging off.
 //With it on, you can monitor the debugging with an xbee over the
 //Arduino serial monitor.
-#define DEBUG 1
+//#define DEBUG 1
 
 #define MAX_SERIAL_WAIT 250
 #define MAX_CHARS_TO_READ 25
@@ -97,6 +97,7 @@ void readBodyPot(uint8_t numSamples){
     y += analogRead(CONTROL_BODY_POT_FR_APIN);
     
 #ifdef DEBUG
+  Serial.println();
   Serial.println("readBodyPot: Raw");
   Serial.print("X: ");
   Serial.println(x);
@@ -208,7 +209,8 @@ void readButtonArray(){
 }
 
 bool arraysDifferent(int pot[], int att[]){
-  #ifdef DEBUG
+#ifdef DEBUG
+  Serial.println();
   Serial.println("ArraysDifferent: Values");
   Serial.print("{ ");
   for(uint8_t i = 0; i<3; i++){
@@ -248,7 +250,7 @@ void sendPWMPin(char dest, uint8_t pin, int val){
   Serial.print(dest);
   Serial.print('W');
   Serial.print(InttoASCII(pin));
-  Serial.print(pad(val, 3));
+  Serial.println(pad(val, 3));
 }
 
 //send a digital value to a pin
@@ -257,7 +259,7 @@ void sendDPin(char dest, uint8_t pin, int val){
   Serial.print(dest);
   Serial.print('D');
   Serial.print(InttoASCII(pin));
-  Serial.print(val);
+  Serial.println(val);
 }
 
 //send a servo angle to a pin
@@ -266,7 +268,7 @@ void sendSPin(char dest, uint8_t pin, int val){
   Serial.print(dest);
   Serial.print('S');
   Serial.print(InttoASCII(pin));
-  Serial.print(pad(val, 3));
+  Serial.println(pad(val, 3));
 }
 
 // send a value back to the controller - called in any of the read
@@ -277,7 +279,7 @@ void sendValue(char sendChar, char label, int value){
   if(label == 'A'){
     Serial.print(pad(value, 4));
   }else{
-    Serial.print(value);
+    Serial.println(value);
   }
 }
 
@@ -316,7 +318,7 @@ void sendBody(){
   Serial.print("BX");
   Serial.print(pad(x, 3));
   Serial.print("Y");
-  Serial.print(pad(y, 3));
+  Serial.println(pad(y, 3));
 }
 
 void sendHead(){
@@ -333,7 +335,7 @@ void sendHead(){
   Serial.print("Y");
   Serial.print(pad(y, 3));
   Serial.print("A");
-  Serial.print(pad(y, 3));
+  Serial.println(pad(y, 3));
 }
 
 void sendStop(){
@@ -351,7 +353,7 @@ void sendStop(){
   Serial.print('$');
   Serial.print(HEADCHAR);
   Serial.print(CONTROLCHAR);
-  Serial.print("STOP");
+  Serial.println("STOP");
 }
 
 void sendHeartbeat(){
@@ -371,21 +373,21 @@ void sendTrellisButton(uint8_t button){
   Serial.print(HEADCHAR);
   Serial.print(CONTROLCHAR);
   Serial.print('P');
-  Serial.print(pad(button, 2));
+  Serial.println(pad(button, 2));
 }
 
 void requestBodyBattery(){
   Serial.print('$');
   Serial.print(BODYCHAR);
   Serial.print(CONTROLCHAR);
-  Serial.print("RBATT");
+  Serial.println("RBATT");
 }
 
 void requestHeadBattery(){
   Serial.print('$');
   Serial.print(HEADCHAR);
   Serial.print(CONTROLCHAR);
-  Serial.print("RBATT");
+  Serial.println("RBATT");
 }
 
 //get results from battery questions, accept commands
@@ -504,38 +506,48 @@ void handleHeadPot(){ //xya joystick
 }
 
 void handleButtonArray(){ //funny noises in a big fancy grid
-  //go through the button array, see which was pressed
-  //these are the sound buttons :-)
-  for(uint8_t i=0; i<12; i++){
-    if(trellis.justPressed(i)){
-      sendTrellisButton(i);
+  delay(30);
+  if(trellis.readSwitches()){
+    //go through the button array, see which was pressed
+    //these are the sound buttons :-)
+    for(uint8_t i=0; i<12; i++){
+      if(trellis.justPressed(i)){
+        sendTrellisButton(i);
+        trellis.setLED(i);
+        delay(100);
+      }
+      if(trellis.justReleased(i)){
+        trellis.clrLED(i);
+        delay(100);
+      }
     }
-  }
   
-  //the other four buttons are indicators, and the kill switch.
-  //check for disabled stuff, and flash the appropriate button.
-  if(trellis.justPressed(allStopLedIndex)){
-    sendStop();
-    shutdownController(); 
-  }
+    //the other four buttons are indicators, and the kill switch.
+    //check for disabled stuff, and flash the appropriate button.
+    if(trellis.justPressed(allStopLedIndex)){
+      sendStop();
+      shutdownController(); 
+    }
   
-  //the other buttons can't be pressed yet, but they blink if something's dead.
-  if(headDisabled == 1){
-    trellis.setLED(headLedIndex);
+    //the other buttons can't be pressed yet, but they blink if something's dead.
+    if(headDisabled == 1){
+      trellis.setLED(headLedIndex);
+      trellis.writeDisplay();
+      delay(125);
+      trellis.clrLED(headLedIndex);
+      trellis.writeDisplay(); 
+    }
+  
+    if(bodyDisabled == 1){
+      trellis.setLED(bodyLedIndex);
+      trellis.writeDisplay();
+      delay(125);
+      trellis.clrLED(bodyLedIndex);
+      trellis.writeDisplay();
+    }
+
     trellis.writeDisplay();
-    delay(125);
-    trellis.clrLED(headLedIndex);
-    trellis.writeDisplay(); 
   }
-  
-  if(bodyDisabled == 1){
-    trellis.setLED(bodyLedIndex);
-    trellis.writeDisplay();
-    delay(125);
-    trellis.clrLED(bodyLedIndex);
-    trellis.writeDisplay(); 
-  }
-  
 }
 
 void shutdownButtonArray(){
@@ -727,10 +739,11 @@ void setup()
 void loop()
 {
 #ifdef DEBUG
+  Serial.println();
   Serial.println("Loop Start"); // Print a helpful menu
 #endif
   //check the battery voltage - shutdown if it's too low.
-  checkBatteryForShutdown();
+  //checkBatteryForShutdown();
 
   //read the xbee radio in
   handleXbee();
@@ -738,7 +751,7 @@ void loop()
   //read all of our sensors
   readBodyPot();
   readHeadPot();
-  readButtonArray();
+  //readButtonArray();
 
   //send messages from our sensors
   handleBodyPot(); //this also handles the spin buttons
@@ -747,7 +760,8 @@ void loop()
   
 
 #ifdef DEBUG
+  Serial.println();
   Serial.println("Loop End - pause 3 sec");
-  delay(3000); //for debugging - to reduce the number of commands sent.
+  delay(1000); //for debugging - to reduce the number of commands sent.
 #endif
 }

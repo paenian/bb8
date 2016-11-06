@@ -49,9 +49,11 @@ int bodyState[3] = {512, 512, 512}; //what the body is currently doing
 uint8_t bodyDisabled = 0;
 
 //pid settings... the head might need its own pid?  it shouldn't, though...
-#define BODY_PROPORTIONAL 2
+#define BODY_PROPORTIONAL .5
 #define BODY_INTEGRAL .25
 #define BODY_DIFFERENTIAL .25
+#define BODY_HYSTERESIS 5
+#define BODY_DEADZONE 5
 
 
 //shutdown after 10 seconds of no signal
@@ -79,10 +81,9 @@ void setup()
 
 void loop()
 {
-  checkBatteryForShutdown();
+  //checkBatteryForShutdown();
   
   handleXbee();
-  
   handleHeartbeat();
   
   //readBodyAccel();
@@ -92,10 +93,60 @@ void loop()
   updateHeadMotors();
 }
 
-void handleHeartbead(){
+void updateHeadMotors(){
+  //the head is driven by three servos :-)
+}
+
+void updateBodyMotors(){
+  uint8_t motorSpeed;
+  
+  //proportional control :-)
+  for(int i=0; i<3; i++){
+    bodyState[i] += BODY_PROPORTIONAL * (bodyPot[i] - bodyState[i]);
+  }
+  
+  //update the motors
+    if((bodyState[0] > 512 + BODY_DEADZONE) || (bodyState[0] < 512 - BODY_DEADZONE)){
+      if(bodyState[0] > 512){
+        digitalWrite(BODY_X0_DIR_PIN, LOW);
+        digitalWrite(BODY_X1_DIR_PIN, LOW);
+      }else{
+        digitalWrite(BODY_X0_DIR_PIN, HIGH);
+        digitalWrite(BODY_X1_DIR_PIN, HIGH);
+      }
+      
+      motorSpeed = map(abs(bodyState[0]-512), 0, 512, 0, 255);
+      
+      digitalWrite(BODY_X0_SPEED_PIN, motorSpeed);
+      digitalWrite(BODY_X1_SPEED_PIN, motorSpeed);
+    }
+    
+    if((bodyState[1] > 512 + BODY_DEADZONE) || (bodyState[1] < 512 - BODY_DEADZONE)){
+      //Y
+      if(bodyState[1] > 512){
+        digitalWrite(BODY_Y0_DIR_PIN, LOW);
+        digitalWrite(BODY_Y1_DIR_PIN, LOW);
+      }else{
+        digitalWrite(BODY_Y0_DIR_PIN, HIGH);
+        digitalWrite(BODY_Y1_DIR_PIN, HIGH);
+      }
+      
+      motorSpeed = map(abs(bodyState[1]-512), 0, 512, 0, 255);
+      
+      digitalWrite(BODY_Y0_SPEED_PIN, motorSpeed);
+      digitalWrite(BODY_Y1_SPEED_PIN, motorSpeed);
+    
+      //spin
+      //not implemented
+    }
+  
+}
+
+void handleHeartbeat(){
   if(millis() - lastHeartbeat > HEARTBEAT_TIMEOUT){
     //we don't need to panic, just stop BB8 from running away.
-    bodyPot = {512, 512, 512};
+    for(uint8_t i=0; i<3; i++)
+      bodyPot[i] = 512;
   }
 }
 
@@ -112,17 +163,30 @@ void handleXbee(){
     char c = Serial.read();  //three chars left
     chars++;
     
-    if(c == '$'){  //control char
+    if(c == '$'){  //control char    
+#ifdef DEBUG
+  Serial.print("BodyCommand: ");
+#endif
+    
       c = Serial.read();  //two chars left
-      chars++;
+      chars++;   
+#ifdef DEBUG
+  Serial.print(c);
+#endif      
       
       if(c == BODYCHAR){  //to char - we only care if it's for us
         sender = Serial.read();  //from char - record who sent the message
         chars++;
-        
+#ifdef DEBUG
+  Serial.print(c);
+#endif
+
         c = Serial.read();  //command char - this is the last guaranteed char
         chars++;
-        
+#ifdef DEBUG
+  Serial.print(c);
+#endif     
+
         lastHeartbeat = millis();        
         
         switch(c){
@@ -155,18 +219,21 @@ void handleXbee(){
   }
 }
 
+void sendInfoController(){
+  Serial.println("Body: The controller wants information.");
+}
+
 void readBodyCommand(){
   //figure out what the controller wants us to do :-)
   //So far, we've consumed the characters $BCB
   //Next is X###Y###frea
-  
 
   //if there's a problem with the read, we'll just ignore the command.
   //So set a sane default
   int newPot[3] = {512, 512, 512};
   
 #ifdef DEBUG
-  Serial.println("body: readBodyCommand");
+  Serial.println(" moving body");
 #endif
 
   if(readSerialBlocking() != 'X'){
@@ -190,6 +257,17 @@ void readBodyCommand(){
   newPot[1] = readInteger(3);
   
   memcpy( bodyPot, newPot, sizeof(bodyPot));
+
+#ifdef DEBUG
+  Serial.println();
+  Serial.println("body: newcoords: ");
+  Serial.print("{ ");
+  for(uint8_t i = 0; i<3; i++){
+    Serial.print(newPot[i]);
+    Serial.print("\t, ");
+  }
+  Serial.println("}");
+#endif 
 }
 
 //turn off all the pins
@@ -198,8 +276,11 @@ void Stop(){
   Serial.println("Body: Stopping All Motors");
 #endif
 
-  bodyPot = {512, 512, 512};
-  bodyState = {512, 512, 512};
+  for(uint8_t i=0; i<3; i++){
+    bodyPot[i] = 512;
+    bodyState[i] = 512;
+  }
+  
   bodyDisabled = 1;  
 
 #ifdef DEBUG
