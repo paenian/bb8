@@ -10,7 +10,7 @@ m6_tap_rad = 6/2-.5;
 m6_rad = 6/2+.5;
 
 
-face = 5;
+face = 21;
 
 
 
@@ -259,7 +259,7 @@ module corner_tab_holes(tap = true){
     screw_rad = (tap)?4/2+slop:5/2+slop;
     screw_cap_rad = 10/2;
     screw_cap_height = 2.25;
-    cap_offset = 1;
+    cap_offset = 1-.5;
     
     for(i=[0:1]) for(j=[0:1]) mirror([i,0,0]) mirror([0,j,0]) translate([side/3.75, side/3.75,0]){
         cylinder(r=screw_rad, h=wall*3, center=true, $fn=facets);
