@@ -242,75 +242,11 @@ bool arraysDifferent(int pot[], int att[]){
   return false;
 }
 
-/******** Sending and Recieving Xbee! **********/
-
-//send an analog value to a pin
-void sendPWMPin(char dest, uint8_t pin, int val){
-  Serial.print('$');
-  Serial.print(dest);
-  Serial.print('W');
-  Serial.print(InttoASCII(pin));
-  Serial.println(pad(val, 3));
-}
-
-//send a digital value to a pin
-void sendDPin(char dest, uint8_t pin, int val){
-  Serial.print('$');
-  Serial.print(dest);
-  Serial.print('D');
-  Serial.print(InttoASCII(pin));
-  Serial.println(val);
-}
-
-//send a servo angle to a pin
-void sendSPin(char dest, uint8_t pin, int val){
-  Serial.print('$');
-  Serial.print(dest);
-  Serial.print('S');
-  Serial.print(InttoASCII(pin));
-  Serial.println(pad(val, 3));
-}
-
-// send a value back to the controller - called in any of the read
-//  functions.
-void sendValue(char sendChar, char label, int value){
-  Serial.print('$'+sendChar);
-  Serial.print(label);
-  if(label == 'A'){
-    Serial.print(pad(value, 4));
-  }else{
-    Serial.println(value);
-  }
-}
-
-//send speed and direction in a single function
-void sendSpeedDir(char dest, uint8_t speed_pin, uint8_t dir_pin, int val){
-  if( val >= 512 ){
-    //send the speed first
-    sendPWMPin(dest, speed_pin, map(val, 512, 1024, 0, 255));
-
-    //and then the direction
-    sendDPin(dest, dir_pin, 1);
-  }else{
-    //speed first again
-    sendPWMPin(dest, speed_pin, map(val, 0, 511, 0, 255));
-
-    //and then the direction
-    sendDPin(dest, dir_pin, 0);
-  }
-}
-
-//send angle - which is 0 to 1800
-void sendAngle(char dest, uint8_t pin, int val){
-  sendSPin(dest, pin, map(val, 0, 1800, 0, 180));
-}
-
-
 /*********** NEW PROTOCOL - do not use other send functions. *******/
 void sendBody(){
   //looks like $BCBX###Y###
-  uint8_t x = map(bodyAtt[0], 0, 1023, 0, 255);
-  uint8_t y = map(bodyAtt[1], 0, 1023, 0, 255);
+  uint8_t x = map(bodyAtt[0], 0, 1023, 0, 511);
+  uint8_t y = map(bodyAtt[1], 0, 1023, 0, 511);
 
   Serial.print('$');
   Serial.print(BODYCHAR);
@@ -323,9 +259,9 @@ void sendBody(){
 
 void sendHead(){
   //looks like $BCHX###Y###A###
-  uint8_t x = map(headAtt[0], 0, 1023, 0, 255);
-  uint8_t y = map(headAtt[1], 0, 1023, 0, 255);
-  uint8_t a = map(headAtt[2], 0, 1023, 0, 255);
+  uint8_t x = map(headAtt[0], 0, 1023, 0, 511);
+  uint8_t y = map(headAtt[1], 0, 1023, 0, 511);
+  uint8_t a = map(headAtt[2], 0, 1023, 0, 511);
 
   Serial.print('$');
   Serial.print(BODYCHAR);

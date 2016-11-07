@@ -20,7 +20,7 @@ Distributed as-is; no warranty is given.
 //comment this out to turn serial debugging off.
 //With it on, you can monitor the debugging with an xbee over the
 //Arduino serial monitor.
-#define DEBUG 1
+//#define DEBUG 1
 
 //the max chars should only be an issue with debugging on :-)
 #define MAX_SERIAL_WAIT 250
@@ -42,9 +42,9 @@ int headVoltage = MIN_VOLTAGE + 1;
 
 
 //position variables
-int bodyPot[3] = {512, 512, 512};   //this is the potentiometer reading from the controller.
+int bodyPot[3] = {255, 255, 255};   //this is the potentiometer reading from the controller.
                                     //The third one isn't used as yet, but it's for spinning bb8.
-int bodyState[3] = {512, 512, 512}; //what the body is currently doing
+int bodyState[3] = {255, 255, 255}; //what the body is currently doing
 
 uint8_t bodyDisabled = 0;
 
@@ -62,6 +62,21 @@ unsigned long lastHeartbeat;  //this is updated every time we receive a command.
 
 
 void initPins(){
+  pinMode(BODY_X0_DIR_PIN, OUTPUT);
+  pinMode(BODY_X0_SPEED_PIN, OUTPUT);
+  pinMode(BODY_X0_CURR_PIN, INPUT);
+
+  pinMode(BODY_X1_DIR_PIN, OUTPUT);
+  pinMode(BODY_X1_SPEED_PIN, OUTPUT);
+  pinMode(BODY_X1_CURR_PIN, INPUT);
+
+  pinMode(BODY_Y0_DIR_PIN, OUTPUT);
+  pinMode(BODY_Y0_SPEED_PIN, OUTPUT);
+  pinMode(BODY_Y0_CURR_PIN, INPUT);
+
+  pinMode(BODY_Y1_DIR_PIN, OUTPUT);
+  pinMode(BODY_Y1_SPEED_PIN, OUTPUT);
+  pinMode(BODY_Y1_CURR_PIN, INPUT);
 }
 
 void setup()
@@ -106,8 +121,22 @@ void updateBodyMotors(){
   }
   
   //update the motors
-    if((bodyState[0] > 512 + BODY_DEADZONE) || (bodyState[0] < 512 - BODY_DEADZONE)){
-      if(bodyState[0] > 512){
+    if((bodyState[0] > 255 + BODY_DEADZONE) || (bodyState[0] < 255 - BODY_DEADZONE)){
+      #ifdef DEBUG
+      Serial.println("Moving Motors");
+
+      //print the new coordinates
+      Serial.println();
+      Serial.println("body: newstate: ");
+      Serial.print("{ ");
+      for(uint8_t i = 0; i<3; i++){
+        Serial.print(bodyState[i]);
+        Serial.print("\t, ");
+      }
+      Serial.println("}");
+      
+      #endif
+      if(bodyState[0] > 255){
         digitalWrite(BODY_X0_DIR_PIN, LOW);
         digitalWrite(BODY_X1_DIR_PIN, LOW);
       }else{
@@ -115,15 +144,24 @@ void updateBodyMotors(){
         digitalWrite(BODY_X1_DIR_PIN, HIGH);
       }
       
-      motorSpeed = map(abs(bodyState[0]-512), 0, 512, 0, 255);
+      motorSpeed = abs(bodyState[0]-255);
+
+      #ifdef DEBUG
+      Serial.print("X Speed: ");
+      Serial.println(motorSpeed);
+      #endif DEBUG
       
-      digitalWrite(BODY_X0_SPEED_PIN, motorSpeed);
-      digitalWrite(BODY_X1_SPEED_PIN, motorSpeed);
+      analogWrite(BODY_X0_SPEED_PIN, motorSpeed);
+      analogWrite(BODY_X1_SPEED_PIN, motorSpeed);
+    }else{
+      //we're in the dead zone, so kill the motor
+      analogWrite(BODY_X0_SPEED_PIN, 0);
+      analogWrite(BODY_X1_SPEED_PIN, 0);
     }
     
-    if((bodyState[1] > 512 + BODY_DEADZONE) || (bodyState[1] < 512 - BODY_DEADZONE)){
+    if((bodyState[1] > 255 + BODY_DEADZONE) || (bodyState[1] < 255 - BODY_DEADZONE)){
       //Y
-      if(bodyState[1] > 512){
+      if(bodyState[1] > 255){
         digitalWrite(BODY_Y0_DIR_PIN, LOW);
         digitalWrite(BODY_Y1_DIR_PIN, LOW);
       }else{
@@ -131,13 +169,17 @@ void updateBodyMotors(){
         digitalWrite(BODY_Y1_DIR_PIN, HIGH);
       }
       
-      motorSpeed = map(abs(bodyState[1]-512), 0, 512, 0, 255);
+      motorSpeed = abs(bodyState[1]-255);
       
-      digitalWrite(BODY_Y0_SPEED_PIN, motorSpeed);
-      digitalWrite(BODY_Y1_SPEED_PIN, motorSpeed);
+      analogWrite(BODY_Y0_SPEED_PIN, motorSpeed);
+      analogWrite(BODY_Y1_SPEED_PIN, motorSpeed);
     
       //spin
       //not implemented
+    }else{
+      //we're in the dead zone, so kill the motor
+      analogWrite(BODY_Y0_SPEED_PIN, 0);
+      analogWrite(BODY_Y1_SPEED_PIN, 0);
     }
   
 }
@@ -146,7 +188,7 @@ void handleHeartbeat(){
   if(millis() - lastHeartbeat > HEARTBEAT_TIMEOUT){
     //we don't need to panic, just stop BB8 from running away.
     for(uint8_t i=0; i<3; i++)
-      bodyPot[i] = 512;
+      bodyPot[i] = 255;
   }
 }
 
@@ -230,7 +272,7 @@ void readBodyCommand(){
 
   //if there's a problem with the read, we'll just ignore the command.
   //So set a sane default
-  int newPot[3] = {512, 512, 512};
+  int newPot[3] = {255, 255, 255};
   
 #ifdef DEBUG
   Serial.println(" moving body");
@@ -246,7 +288,7 @@ void readBodyCommand(){
   //read x
   newPot[0] = readInteger(3);
   
-  if(readSerialBlocking() != 'X'){
+  if(readSerialBlocking() != 'Y'){
 #ifdef DEBUG
   Serial.println("body: readBodyCommand: Bad format, no Y");
 #endif
@@ -277,8 +319,8 @@ void Stop(){
 #endif
 
   for(uint8_t i=0; i<3; i++){
-    bodyPot[i] = 512;
-    bodyState[i] = 512;
+    bodyPot[i] = 255;
+    bodyState[i] = 255;
   }
   
   bodyDisabled = 1;  
@@ -323,9 +365,19 @@ int readInteger(uint8_t digits){
   //todo: throw an error if we can't read the serial
   int integer = 0;
   
-  for(int multiplier = 10^(digits-1); multiplier > 0; multiplier = multiplier/10){
-    integer += multiplier*ASCIItoInt(readSerialBlocking());
+  #ifdef DEBUG
+  Serial.print("Reading ");
+  Serial.print(digits);
+  Serial.print(" Digits: ");
+  #endif
+  
+  for(uint8_t i=0; i<digits; i++){
+    integer += pow(10,digits-1-i) * ASCIItoInt(readSerialBlocking());
   }
+
+  #ifdef DEBUG
+  Serial.println(integer);
+  #endif
   
   return integer;
 }
