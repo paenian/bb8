@@ -508,7 +508,7 @@ int readBattery(uint8_t numSamples){
     voltage += analogRead(CONTROL_BATTERY_MONITOR_APIN);
   }
   
-  return map(voltage, 0, 1023*numSamples, 1, 1023);
+  return map(voltage, 0, 1023*numSamples, 0, 1023);
 }
 
 //reads the controller's voltage
