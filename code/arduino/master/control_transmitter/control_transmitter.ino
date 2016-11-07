@@ -46,7 +46,7 @@ int bodyAtt[3] = {512, 512, 512}; //the current body attitude
 int bodyPotZero[3] = {512, 512, 512}; //everything perfectly centered
 
 
-int headPot[3] = {512, 512, 512}; //the third is angle, for turning the head; it's in tens of degrees.
+int headPot[3] = {512, 512, 512}; //the third is angle, for turning the head.
 int headAtt[3] = {512, 512, 512}; //the current head attitude
 int headPotZero[3] = {512, 512, 512}; //perfectly centered
 
@@ -59,6 +59,7 @@ uint8_t tellis_INTPIN = 0;  //the interrupt pin - we're not going to use it, jus
 ////////Battery Voltage
 //batteries can't be below MIN_VOLTAGE
 //that's just over 3 volts in 10 bit.
+//also, possibly, the number of the beast.
 #define MIN_VOLTAGE 616
 
 //and we check them every INTERVAL
@@ -245,8 +246,8 @@ bool arraysDifferent(int pot[], int att[]){
 /*********** NEW PROTOCOL - do not use other send functions. *******/
 void sendBody(){
   //looks like $BCBX###Y###
-  uint8_t x = map(bodyAtt[0], 0, 1023, 0, 511);
-  uint8_t y = map(bodyAtt[1], 0, 1023, 0, 511);
+  uint8_t x = map(bodyAtt[0], 1, 1023, 1, 511);
+  uint8_t y = map(bodyAtt[1], 1, 1023, 1, 511);
 
   Serial.print('$');
   Serial.print(BODYCHAR);
@@ -259,9 +260,9 @@ void sendBody(){
 
 void sendHead(){
   //looks like $BCHX###Y###A###
-  uint8_t x = map(headAtt[0], 0, 1023, 0, 511);
-  uint8_t y = map(headAtt[1], 0, 1023, 0, 511);
-  uint8_t a = map(headAtt[2], 0, 1023, 0, 511);
+  uint8_t x = map(headAtt[0], 1, 1023, 1, 511);
+  uint8_t y = map(headAtt[1], 1, 1023, 1, 511);
+  uint8_t a = map(headAtt[2], 1, 1023, 1, 511);
 
   Serial.print('$');
   Serial.print(BODYCHAR);
