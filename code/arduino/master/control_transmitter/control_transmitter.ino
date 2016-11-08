@@ -50,6 +50,9 @@ int headPot[3] = {512, 512, 512}; //the third is angle, for turning the head.
 int headAtt[3] = {512, 512, 512}; //the current head attitude
 int headPotZero[3] = {512, 512, 512}; //perfectly centered
 
+unsigned long lastHeartbeat = 0;
+#define HEARTBEAT_TIMER 1000
+
 //the 16 button array is the trellis
 Adafruit_Trellis array = Adafruit_Trellis();
 Adafruit_TrellisSet trellis = Adafruit_TrellisSet(&array);
@@ -96,7 +99,8 @@ void readBodyPot(uint8_t numSamples){
     x += analogRead(CONTROL_BODY_POT_LR_APIN);
     analogRead(CONTROL_BODY_POT_FR_APIN);
     y += analogRead(CONTROL_BODY_POT_FR_APIN);
-    
+  }
+  
 #ifdef DEBUG
   Serial.println();
   Serial.println("readBodyPot: Raw");
@@ -105,7 +109,6 @@ void readBodyPot(uint8_t numSamples){
   Serial.print("Y: ");
   Serial.println(y);
 #endif
-  }
 
   //cheap average
   bodyPot[0] = map(x, 0, 1023*numSamples, 1, 1023);
@@ -127,7 +130,7 @@ void readBodyPot(uint8_t numSamples){
 }
 
 void readBodyPot(){
-  readBodyPot(1);
+  readBodyPot(2);
 }
 
 void initTrellis(){
@@ -210,7 +213,7 @@ void readButtonArray(){
 }
 
 bool arraysDifferent(int pot[], int att[]){
-#ifdef DEBUG
+#ifdef DEBUG2
   Serial.println();
   Serial.println("ArraysDifferent: Values");
   Serial.print("{ ");
@@ -226,7 +229,6 @@ bool arraysDifferent(int pot[], int att[]){
     Serial.print("\t, ");
   }
   Serial.println("}");
-  
 #endif
 
   //first see if the controls have changed
@@ -236,7 +238,7 @@ bool arraysDifferent(int pot[], int att[]){
     }
   }
 
-#ifdef DEBUG
+#ifdef DEBUG2
   Serial.println("ArraysDifferent: returning false");
 #endif
 
@@ -245,9 +247,38 @@ bool arraysDifferent(int pot[], int att[]){
 
 /*********** NEW PROTOCOL - do not use other send functions. *******/
 void sendBody(){
+#ifdef DEBUG
+  Serial.println("sendBody: raw attitude");
+  Serial.print("{ ");
+  for(uint8_t i = 0; i<3; i++){
+    Serial.print(bodyAtt[i]);
+    Serial.print("\t, ");
+  }
+  Serial.println("}");
+#endif
+
   //looks like $BCBX###Y###
-  uint8_t x = map(bodyAtt[0], 1, 1023, 1, 511);
-  uint8_t y = map(bodyAtt[1], 1, 1023, 1, 511);
+  int x = map(bodyAtt[0], 1, 1023, 1, 511);
+  int y = map(bodyAtt[1], 1, 1023, 1, 511);
+
+#ifdef DEBUG
+  Serial.println("sendBody: Values");
+  Serial.print("{ \t");
+  Serial.print(x);
+  Serial.print("\t, ");
+  Serial.print(y);
+  Serial.println(" }");
+#endif
+
+#ifdef DEBUG
+  Serial.println("sendBody: padded");
+  Serial.print("{ \t");
+  Serial.print(pad(x,3));
+  Serial.print("\t, ");
+  Serial.print(pad(y,3));
+  Serial.println(" }");
+#endif
+
 
   Serial.print('$');
   Serial.print(BODYCHAR);
@@ -671,6 +702,15 @@ void setup()
 #ifdef DEBUG
   printMenu(); // Print a helpful menu
 #endif
+
+
+  lastHeartbeat = millis();
+}
+
+void checkHeartbeat(){
+  if(millis() > lastHeartbeat + HEARTBEAT_TIMER){
+    sendHeartbeat();
+  }
 }
 
 void loop()
@@ -681,6 +721,7 @@ void loop()
 #endif
   //check the battery voltage - shutdown if it's too low.
   //checkBatteryForShutdown();
+  checkHeartbeat();
 
   //read the xbee radio in
   handleXbee();
