@@ -46,9 +46,12 @@ int bodyAtt[3] = {512, 512, 512}; //the current body attitude
 int bodyPotZero[3] = {512, 512, 512}; //everything perfectly centered
 
 
-int headPot[3] = {512, 512, 512}; //the third is angle, for turning the head; it's in tens of degrees.
+int headPot[3] = {512, 512, 512}; //the third is angle, for turning the head.
 int headAtt[3] = {512, 512, 512}; //the current head attitude
 int headPotZero[3] = {512, 512, 512}; //perfectly centered
+
+unsigned long lastHeartbeat = 0;
+#define HEARTBEAT_TIMER 1000
 
 //the 16 button array is the trellis
 Adafruit_Trellis array = Adafruit_Trellis();
@@ -59,6 +62,7 @@ uint8_t tellis_INTPIN = 0;  //the interrupt pin - we're not going to use it, jus
 ////////Battery Voltage
 //batteries can't be below MIN_VOLTAGE
 //that's just over 3 volts in 10 bit.
+//also, possibly, the number of the beast.
 #define MIN_VOLTAGE 616
 
 //and we check them every INTERVAL
@@ -95,7 +99,8 @@ void readBodyPot(uint8_t numSamples){
     x += analogRead(CONTROL_BODY_POT_LR_APIN);
     analogRead(CONTROL_BODY_POT_FR_APIN);
     y += analogRead(CONTROL_BODY_POT_FR_APIN);
-    
+  }
+  
 #ifdef DEBUG
   Serial.println();
   Serial.println("readBodyPot: Raw");
@@ -104,7 +109,6 @@ void readBodyPot(uint8_t numSamples){
   Serial.print("Y: ");
   Serial.println(y);
 #endif
-  }
 
   //cheap average
   bodyPot[0] = map(x, 0, 1023*numSamples, 1, 1023);
@@ -126,7 +130,7 @@ void readBodyPot(uint8_t numSamples){
 }
 
 void readBodyPot(){
-  readBodyPot(1);
+  readBodyPot(2);
 }
 
 void initTrellis(){
@@ -209,7 +213,7 @@ void readButtonArray(){
 }
 
 bool arraysDifferent(int pot[], int att[]){
-#ifdef DEBUG
+#ifdef DEBUG2
   Serial.println();
   Serial.println("ArraysDifferent: Values");
   Serial.print("{ ");
@@ -225,7 +229,6 @@ bool arraysDifferent(int pot[], int att[]){
     Serial.print("\t, ");
   }
   Serial.println("}");
-  
 #endif
 
   //first see if the controls have changed
@@ -235,82 +238,47 @@ bool arraysDifferent(int pot[], int att[]){
     }
   }
 
-#ifdef DEBUG
+#ifdef DEBUG2
   Serial.println("ArraysDifferent: returning false");
 #endif
 
   return false;
 }
 
-/******** Sending and Recieving Xbee! **********/
-
-//send an analog value to a pin
-void sendPWMPin(char dest, uint8_t pin, int val){
-  Serial.print('$');
-  Serial.print(dest);
-  Serial.print('W');
-  Serial.print(InttoASCII(pin));
-  Serial.println(pad(val, 3));
-}
-
-//send a digital value to a pin
-void sendDPin(char dest, uint8_t pin, int val){
-  Serial.print('$');
-  Serial.print(dest);
-  Serial.print('D');
-  Serial.print(InttoASCII(pin));
-  Serial.println(val);
-}
-
-//send a servo angle to a pin
-void sendSPin(char dest, uint8_t pin, int val){
-  Serial.print('$');
-  Serial.print(dest);
-  Serial.print('S');
-  Serial.print(InttoASCII(pin));
-  Serial.println(pad(val, 3));
-}
-
-// send a value back to the controller - called in any of the read
-//  functions.
-void sendValue(char sendChar, char label, int value){
-  Serial.print('$'+sendChar);
-  Serial.print(label);
-  if(label == 'A'){
-    Serial.print(pad(value, 4));
-  }else{
-    Serial.println(value);
-  }
-}
-
-//send speed and direction in a single function
-void sendSpeedDir(char dest, uint8_t speed_pin, uint8_t dir_pin, int val){
-  if( val >= 512 ){
-    //send the speed first
-    sendPWMPin(dest, speed_pin, map(val, 512, 1024, 0, 255));
-
-    //and then the direction
-    sendDPin(dest, dir_pin, 1);
-  }else{
-    //speed first again
-    sendPWMPin(dest, speed_pin, map(val, 0, 511, 0, 255));
-
-    //and then the direction
-    sendDPin(dest, dir_pin, 0);
-  }
-}
-
-//send angle - which is 0 to 1800
-void sendAngle(char dest, uint8_t pin, int val){
-  sendSPin(dest, pin, map(val, 0, 1800, 0, 180));
-}
-
-
 /*********** NEW PROTOCOL - do not use other send functions. *******/
 void sendBody(){
+#ifdef DEBUG
+  Serial.println("sendBody: raw attitude");
+  Serial.print("{ ");
+  for(uint8_t i = 0; i<3; i++){
+    Serial.print(bodyAtt[i]);
+    Serial.print("\t, ");
+  }
+  Serial.println("}");
+#endif
+
   //looks like $BCBX###Y###
-  uint8_t x = map(bodyAtt[0], 0, 1023, 0, 255);
-  uint8_t y = map(bodyAtt[1], 0, 1023, 0, 255);
+  int x = map(bodyAtt[0], 1, 1023, 1, 511);
+  int y = map(bodyAtt[1], 1, 1023, 1, 511);
+
+#ifdef DEBUG
+  Serial.println("sendBody: Values");
+  Serial.print("{ \t");
+  Serial.print(x);
+  Serial.print("\t, ");
+  Serial.print(y);
+  Serial.println(" }");
+#endif
+
+#ifdef DEBUG
+  Serial.println("sendBody: padded");
+  Serial.print("{ \t");
+  Serial.print(pad(x,3));
+  Serial.print("\t, ");
+  Serial.print(pad(y,3));
+  Serial.println(" }");
+#endif
+
 
   Serial.print('$');
   Serial.print(BODYCHAR);
@@ -323,9 +291,9 @@ void sendBody(){
 
 void sendHead(){
   //looks like $BCHX###Y###A###
-  uint8_t x = map(headAtt[0], 0, 1023, 0, 255);
-  uint8_t y = map(headAtt[1], 0, 1023, 0, 255);
-  uint8_t a = map(headAtt[2], 0, 1023, 0, 255);
+  uint8_t x = map(headAtt[0], 1, 1023, 1, 511);
+  uint8_t y = map(headAtt[1], 1, 1023, 1, 511);
+  uint8_t a = map(headAtt[2], 1, 1023, 1, 511);
 
   Serial.print('$');
   Serial.print(BODYCHAR);
@@ -571,7 +539,7 @@ int readBattery(uint8_t numSamples){
     voltage += analogRead(CONTROL_BATTERY_MONITOR_APIN);
   }
   
-  return map(voltage, 0, 1023*numSamples, 1, 1023);
+  return map(voltage, 0, 1023*numSamples, 0, 1023);
 }
 
 //reads the controller's voltage
@@ -734,6 +702,15 @@ void setup()
 #ifdef DEBUG
   printMenu(); // Print a helpful menu
 #endif
+
+
+  lastHeartbeat = millis();
+}
+
+void checkHeartbeat(){
+  if(millis() > lastHeartbeat + HEARTBEAT_TIMER){
+    sendHeartbeat();
+  }
 }
 
 void loop()
@@ -744,6 +721,7 @@ void loop()
 #endif
   //check the battery voltage - shutdown if it's too low.
   //checkBatteryForShutdown();
+  checkHeartbeat();
 
   //read the xbee radio in
   handleXbee();

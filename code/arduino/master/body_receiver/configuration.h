@@ -80,12 +80,16 @@
 */
 #define BODY_X0_DIR_PIN 2
 #define BODY_X0_SPEED_PIN 3
+#define BODY_X0_CURR_PIN A5
 #define BODY_X1_DIR_PIN 4
 #define BODY_X1_SPEED_PIN 5
+#define BODY_X1_CURR_PIN A4
 #define BODY_Y0_DIR_PIN 7
 #define BODY_Y0_SPEED_PIN 6
+#define BODY_Y0_CURR_PIN A3
 #define BODY_Y1_DIR_PIN 8
 #define BODY_Y1_SPEED_PIN 9
+#define BODY_Y1_CURR_PIN A2
 
 
 /*
