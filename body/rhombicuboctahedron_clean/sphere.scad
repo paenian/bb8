@@ -10,8 +10,7 @@ m6_tap_rad = 6/2-.5;
 m6_rad = 6/2+.5;
 
 
-face = 21;
-
+face = 27;
 
 
 washer_rad = 10.1/2+slop;
@@ -20,10 +19,10 @@ washer_angle = 9;
 
 corner_tab_rad = 70;
 
-assembled = false;
+assembled = true;
 textured = false;
 
-facets = 60;
+facets = 30;
 
 %cube([200,200,.1], center=true);
 
@@ -47,10 +46,13 @@ if(face == 27)
     assembly();
 
 module assembly(){
-    rhombioctahedron_face(face=0, textured=textured);
-    rhombioctahedron_face(face=1, textured=textured);
-    rhombioctahedron_face(face=8, textured=textured);
-    rhombioctahedron_face(face=19, textured=textured);
+    rhombioctahedron_face(face=7, textured=textured);
+    rhombioctahedron_face(face=13, textured=textured);
+    rhombioctahedron_face(face=15, textured=textured);
+    rhombioctahedron_face(face=22, textured=textured);
+    rhombioctahedron_face(face=23, textured=textured);
+    rhombioctahedron_face(face=24, textured=textured);
+    rhombioctahedron_face(face=25, textured=textured);
     corner_tab_array(printing=true);
     //rhombioctahedron_face(face=face, textured=textured);
     //rhombioctahedron_face(face=face, textured=textured);
@@ -163,11 +165,25 @@ module rhombioctahedron_printface(face=0, textured=false){
     //triangles
     if(face > 17 && face <= 21)
         difference(){
+            //printing orientation: rotate([0,0,90*(face-18)]) triangle_face();
             rotate([-22.5,0,0]) rotate([0,0,45]) rotate([0,0,-90*(face-18)]) rhombioctahedron_face(face=face, textured=textured);
         }
-    if(face > 21 && face <= 25)
-        difference(){
-            rotate([-22.5,0,0]) rotate([0,0,45]) mirror([0,0,1]) rotate([0,0,-90*(face-18)]) rhombioctahedron_face(face=face, textured=textured);
+    if(face == 22 || face == 24)
+        {
+            //rotate([-22.5,0,0]) rotate([0,0,45]) mirror([0,0,1]) rotate([0,0,-90*(face-18)]) rhombioctahedron_face(face=face, textured=textured);
+            //printing orientation: rotate([180,0,0]) rotate([0,0,90*(face-19)]) triangle_face();
+            echo(face);
+            echo(90*(25-face));
+            rotate([0,0,-90]) rotate([0,-22.5,0]) rotate([0,0,45]) rotate([-180,0,0]) rotate([0,0,90*(25-face)]) rhombioctahedron_face(face=face, textured=textured);
+        }
+        
+        if(face == 23 || face == 25)
+        {
+            //rotate([-22.5,0,0]) rotate([0,0,45]) mirror([0,0,1]) rotate([0,0,-90*(face-18)]) rhombioctahedron_face(face=face, textured=textured);
+            //printing orientation: rotate([180,0,0]) rotate([0,0,90*(face-19)]) triangle_face();
+            echo(face);
+            echo(90*(25-face));
+            rotate([0,0,90]) rotate([0,22.5,0]) rotate([0,0,45]) rotate([-180,0,0]) rotate([0,0,90*(25-face)]) rhombioctahedron_face(face=face, textured=textured);
         }
 }
 
@@ -191,8 +207,10 @@ module rhombioctahedron_face(face=0, textured=false){
             //triangles
             if(face > 17 && face <= 21)
                 rotate([0,0,90*(face-18)]) triangle_face();
-            if(face > 21 && face <= 25)
-                mirror([0,0,1]) rotate([0,0,90*(face-18)]) triangle_face();
+            if(face > 21 && face <= 25){
+                rotate([180,0,0]) rotate([0,0,90*(face-22)]) triangle_face();
+                echo(90*(face-22));
+            }
         }
         
         if(textured==true){
@@ -205,8 +223,6 @@ module rhombioctahedron_face(face=0, textured=false){
     //to ensure global hole matching, we subtract ALL holes here.
     corner_tab_array();
     }
-    
-    
 }
 
 module rhombioctahedron(){

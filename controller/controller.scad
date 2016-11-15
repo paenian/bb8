@@ -58,9 +58,20 @@ module controller(){
 }
 
 module bottom_right(){
+    offset = 15;
+    charge_height = 10;
+    charge_screwhole = 1.1;
+    charge_screw_sep = .65*25.4;
+    
+    switch_rad = 16/2+.2;
+    switch_nut_rad = 18/2+.5;
+    switch_flat = .3;
+    
     difference(){
         union(){
             dogbone(rad = dog_rad, sep = dog_sep, thick = bot_thick);
+            
+
         }
         
         connectors(solid=0, height = bot_thick, end=1);
@@ -69,7 +80,44 @@ module bottom_right(){
             dogbone(rad = dog_rad-wall, sep = dog_sep, thick = bot_thick, keypad_width = keypad_width-wall*2);
             
             connectors(solid=1, height = bot_thick);
+            
+            //standoffs for the battery mount - needs to be screwed down
+            difference(){
+                translate([offset,keypad_width/2-wall,bot_thick-charge_height+wall]) hull(){
+                    for(i=[-1,1]) translate([charge_screw_sep*i/2,0,0]) {
+                        cylinder(r=wall, h=charge_height);
+                    }
+                    translate([0,-charge_screw_sep,0])
+                    cylinder(r=wall, h=charge_height);
+                }
+                
+                //holes for the battery mount
+                translate([offset,keypad_width/2-wall,bot_thick-charge_height+wall-1]){
+                    for(i=[-1,1]) translate([charge_screw_sep*i/2,0,0]) {
+                        cylinder(r=charge_screwhole, h=charge_height+.5);
+                     }
+                  }
+            }
         }
+        
+        //usb hole
+        translate([offset,keypad_width/2-wall,bot_thick-charge_height+wall-6.5]) hull(){
+            for(i=[-1,1]) translate([5*i,0,0]) {
+                rotate([90,0,0]) cylinder(r=3.25, h=bot_thick, center=true);
+             }
+         }
+         
+         //switch hole
+         translate([-offset,keypad_width/2,switch_nut_rad-1]) rotate([90,0,0]) union(){
+             //the switch hole
+             difference(){
+                cylinder(r=switch_rad, h=bot_thick, center=true);
+                for(i=[-1,1]) translate([(25+switch_rad-switch_flat)*i,0,0]) cube([50,50,50], center=true);
+             }
+             
+             //flat for the nut to tighten
+             cylinder(r=switch_nut_rad, h=keypad_width/2);
+         }
     }
 }
 
