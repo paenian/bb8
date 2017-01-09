@@ -12,11 +12,25 @@ num_motors = 3; //could do a 3 wheel bot, too
 
 motor_rad = 37/2;
 motor_len = 33+26.5;
+motor_mount_screw_circle_rad = 31/2;
+motor_mount_screw_rad = m3_rad;
+motor_collar_rad = 12/2;
+motor_collar_len = 6;
+motor_shaft_rad = 6/2;
+motor_shaft_len = 22;
 motor_shaft_offset = 7;
-motor_mount_arm_thick = 20;
+motor_shaft_d = 5.4 - motor_shaft_rad;
 
-wheel_rad = 50/2;
-wheel_width = 30;
+//wheel adapter variables
+wheel_adapter_shaft_rad = 15/2;
+wheel_adapter_shaft_len = 12;
+wheel_adapter_plate_rad = 28/2;
+wheel_adapter_plate_len = 4;
+
+//wheel variables
+wheel_rad = 60/2;
+wheel_width = 26;
+wheel_inset = 6;//36 is the total length of wheel + adapter.  6 is measured, ish.
 
 //the spines connect the motor arms
 spine_thick = 10;
@@ -25,12 +39,55 @@ spine_shorten_degrees = 20;
 spine_angle = 360 / num_motors - spine_shorten_degrees;    //10 degrees between spines - this is where the motors join them together.
 spine_inner_angle = 5;
 
+//arm variables
+motor_mount_arm_thick = motor_collar_len;
 
 
 $fn=64;
+//motor_wheel();
 !motor_mount_arm();
-//!spine();
-hamster();
+//spine();
+//hamster();
+
+//draws the motor plus a wheel.
+//It's centered on the wheel - so the motor is offset and sticks out a bunch.
+module motor_wheel(){
+    num_screws = 6;
+    translate([-motor_shaft_offset,0,-(motor_len+motor_collar_len+wheel_adapter_shaft_len+wheel_adapter_plate_len - wheel_inset)-wheel_width/2])
+    union(){
+        //////////motor!
+        cylinder(r=motor_rad, h=motor_len);
+        cylinder(r=motor_rad-1, h=32); //the back of the motor's a little smaller
+        
+        //the screwholes - we draw them in protruding.
+        for(i=[0:360/num_screws:359]) rotate([0,0,i]) translate([motor_mount_screw_circle_rad,0,motor_len-.1])
+            cylinder(r=motor_mount_screw_rad, h=3.1);
+        
+        //the collar sticking out
+        translate([motor_shaft_offset,0,motor_len-.1]) cylinder(r=motor_collar_rad, h=motor_collar_len+.1);
+        
+        //the shaft - it's a D
+        translate([motor_shaft_offset,0,motor_len-.1]) 
+        difference(){
+            cylinder(r=motor_shaft_rad, h=motor_shaft_len+.1);
+            translate([25+motor_shaft_d,0,0]) cube([50,50,50], center=true);
+        }
+        
+        //////////Wheel adapter
+        translate([motor_shaft_offset,0,motor_len+motor_collar_len]){
+            cylinder(r=wheel_adapter_shaft_rad, h=wheel_adapter_shaft_len);
+            translate([0,0,wheel_adapter_shaft_len-.1]) cylinder(r=wheel_adapter_plate_rad, h=wheel_adapter_plate_len+.1);
+        }
+        
+        //////////Wheel
+        translate([motor_shaft_offset,0,motor_len+motor_collar_len+wheel_adapter_shaft_len+wheel_adapter_plate_len - wheel_inset]) difference(){
+            cylinder(r=wheel_rad, h=wheel_width);
+            
+            //inset for the other side attachment
+            translate([0,0,wheel_width-wheel_inset]) cylinder(r=wheel_adapter_plate_rad, h=wheel_inset*2);
+        }
+    }
+}
 
 module arm(type="motor"){
     //draws the arms, with the axle in place.
@@ -38,9 +95,9 @@ module arm(type="motor"){
     difference(){
         union(){
             //body
-            #hull(){
-                translate([0,core_rad,0]) cube([spine_thick,2,motor_mount_arm_thick], center=true);
-                translate([0,axles_rad,0]) rotate([0,90,0]) cylinder(r=10, h=30, center=true);
+            hull(){
+                #translate([0,core_rad,0]) cube([motor_mount_arm_thick,2,motor_mount_arm_thick]);
+                #translate([0,axles_rad,0]) rotate([0,90,0]) cylinder(r=10, h=motor_mount_arm_thick);
             }
         }
     }
@@ -48,21 +105,20 @@ module arm(type="motor"){
 
 module motor_mount_arm(){
     arm_width = 20; //width of each arm
-    motor_arm_width = arm_width*2+wheel_width+2;
+    motor_arm_width = wheel_width+motor_collar_len*2+wheel_adapter_shaft_len*2+wheel_adapter_plate_len*2 - wheel_inset*2;
     width = 30;
     thick = motor_mount_arm_thick;
     
     difference(){
         union(){
             //draw in the axle & wheel
-            %translate([0,axles_rad, 0]){
-                rotate([0,90,0]) cylinder(r=axle_rad, h=100, center=true);
-                rotate([0,90,0]) cylinder(r=wheel_rad, h=wheel_width, center=true);
+            %translate([0,axles_rad, 0]) rotate([0,90,0]) {
+                motor_wheel();
             }
             
             //there are two arms - the motor arm and the idler arm.
-            translate([motor_arm_width/2,0,0]) arm(type="motor");
-            translate([motor_arm_width/2,0,0]) arm(type="bearing");
+            translate([-motor_arm_width/2,0,0]) arm(type="motor");
+            mirror([1,0,0]) translate([-motor_arm_width/2,0,0]) arm(type="bearing");
             
             
             //this connects the two
@@ -74,7 +130,7 @@ module motor_mount_arm(){
         
         //gussy it up a little
         translate([0,wheel_rad+wall+axles_rad-wheel_rad-wall,0]) 
-            scale([.8,1,1]) sphere(r=wheel_rad+wall);
+            scale([(motor_arm_width/2-motor_mount_arm_thick*2)/wheel_rad,1,1]) sphere(r=wheel_rad+wall);
         //todo: make the wheel cutout a toroid :-)
         //cut out the wheel
         translate([0,axles_rad, 0]){
