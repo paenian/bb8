@@ -13,14 +13,14 @@ num_motors = 3; //could do a 3 wheel bot, too
 motor_rad = 37/2;
 motor_len = 33+26.5;
 motor_shaft_offset = 7;
-motor_mount_arm_thick = 20;
+motor_mount_arm_thick = 15;
 
 wheel_rad = 50/2;
 wheel_width = 30;
 
 //the spines connect the motor arms
 spine_thick = 10;
-spine_height = 25;
+spine_height = 30;
 spine_shorten_degrees = 20;
 spine_angle = 360 / num_motors - spine_shorten_degrees;    //10 degrees between spines - this is where the motors join them together.
 spine_inner_angle = 5;
@@ -38,9 +38,12 @@ module arm(type="motor"){
     difference(){
         union(){
             //body
-            #hull(){
-                translate([0,core_rad,0]) cube([spine_thick,2,motor_mount_arm_thick], center=true);
-                translate([0,axles_rad,0]) rotate([0,90,0]) cylinder(r=10, h=30, center=true);
+            hull(){
+                //the back
+                translate([0,core_rad,0]) cube([motor_mount_arm_thick,2,spine_height], center=true);
+                
+                //the motor plate
+                translate([0,axles_rad,0]) rotate([0,90,0]) cylinder(r=10, h=motor_mount_arm_thick, center=true);
             }
         }
     }
@@ -124,11 +127,11 @@ module spine_connectors(solid = 1, collar_extra = 0){
                 if(solid == -1){
                     //screwhole
                     cylinder(r=m4_rad+collar_extra/2, h=spine_thick*3, center=true);
-                    //nut trap - horizontal
+                    //nut trap - one up one down
                     translate([0,0,spine_thick*3/2])
                     hull(){
                         rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad, h=m4_nut_height, center=true, $fn=4);
-                        translate([0,-i*wall,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+.25, h=m4_nut_height+1, center=true, $fn=4);
+                        translate([-i*wall,0,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+.25, h=m4_nut_height+1, center=true, $fn=4);
                     }
                     
                     //inset the screw a tiny bit
