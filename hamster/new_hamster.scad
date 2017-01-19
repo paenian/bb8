@@ -13,7 +13,18 @@ num_motors = 3; //could do a 3 wheel bot, too
 motor_rad = 37/2;
 motor_len = 33+26.5;
 motor_shaft_offset = 7;
-motor_mount_arm_thick = 15;
+motor_num_screws = 6;
+motor_screw_rad = m3_rad;
+motor_screw_mount_rad = 31/2;
+motor_shaft_rad = 6/2;
+motor_shaft_len = 22; //measured frm the motor face
+motor_shaft_bump_rad = 12/2;
+motor_shaft_bump_len = 6.5;
+
+flanged_bearing_rad = 13/2+slop;
+
+motor_mount_arm_thick = motor_shaft_bump_len*2;
+motor_mount_arm_height = 25;
 
 wheel_rad = 50/2;
 wheel_width = 30;
@@ -28,9 +39,40 @@ spine_inner_angle = 5;
 
 
 $fn=64;
-!motor_mount_arm();
-//!spine();
-hamster();
+motor();
+arm();
+motor_mount_arm();
+
+spine();
+//spine_connectors(solid=-1, collar_extra=slop/2);
+
+!hamster();
+
+//the motor :-)  The z plane is at the face of the motor.
+module motor(solid = 1, clearance = 0, screw_rad = motor_screw_rad){
+    translate([0,motor_shaft_offset,0])
+    union(){
+        //body
+        translate([0,0,-motor_len]) cylinder(r=motor_rad+clearance, h=motor_len);
+        
+        translate([0,-motor_shaft_offset,-.05]){
+            //bump
+            cylinder(r=motor_shaft_bump_rad+clearance, h=motor_shaft_bump_len+clearance+.1);
+        
+            //shaft
+            cylinder(r=motor_shaft_rad+clearance, h=motor_shaft_len+.1);
+        }
+        
+        //screwholes as bumps
+        for(i=[0:360/motor_num_screws:359]) rotate([0,0,i]) translate([motor_screw_mount_rad,0,0]){
+             cylinder(r=screw_rad, h=wall*3, center=true);
+            
+            //screw caps
+            if(solid == -1)
+            translate([0,0,motor_shaft_bump_len-m3_cap_height]) cylinder(r=m3_cap_rad, h=wall*3);
+        }
+    }
+}
 
 module arm(type="motor"){
     //draws the arms, with the axle in place.
@@ -40,12 +82,19 @@ module arm(type="motor"){
             //body
             hull(){
                 //the back
-                translate([0,core_rad,0]) cube([motor_mount_arm_thick,2,spine_height], center=true);
+                translate([0,core_rad,0]) cube([motor_mount_arm_thick,2,motor_mount_arm_height], center=true);
                 
                 //the motor plate
-                translate([0,axles_rad,0]) rotate([0,90,0]) cylinder(r=10, h=motor_mount_arm_thick, center=true);
+                translate([0,axles_rad,0]) 
+                intersection(){
+                    rotate([0,90,0]) cylinder(r=motor_rad, h=motor_mount_arm_thick, center=true);
+                    cube([motor_mount_arm_thick,50,motor_mount_arm_height], center=true);
+                }
             }
         }
+        
+        //draw in the motor
+        translate([0,axles_rad,0]) rotate([0,-90,0]) rotate([0,0,-90]) motor(clearance = .5, solid = -1);
     }
 }
 
@@ -53,7 +102,7 @@ module motor_mount_arm(){
     arm_width = 20; //width of each arm
     motor_arm_width = arm_width*2+wheel_width+2;
     width = 30;
-    thick = motor_mount_arm_thick;
+    thick = motor_mount_arm_height;
     
     difference(){
         union(){
@@ -65,15 +114,22 @@ module motor_mount_arm(){
             
             //there are two arms - the motor arm and the idler arm.
             translate([motor_arm_width/2,0,0]) arm(type="motor");
-            translate([motor_arm_width/2,0,0]) arm(type="bearing");
+            mirror([1,0,0]) translate([motor_arm_width/2,0,0]) arm(type="bearing");
             
             
             //this connects the two
-            translate([0,core_rad,0]) cube([motor_arm_width,width*2,thick], center=true);
+            intersection(){
+                translate([0,core_rad,0]) cube([motor_arm_width,width*2,thick], center=true);
+                
+                cylinder(r=core_rad+spine_thick*2, h=thick, center=true);
+            }
+            
+            //chamfer the edges a bit
+            for(i=[0,1]) mirror([i,0,0]) translate([motor_arm_width/2-motor_mount_arm_thick/2,core_rad+spine_thick*1.75,0]) cylinder(r=wall, h=thick, center=true, $fn=4);
         }
         
         //cut out the core
-        cylinder(r=core_rad+slop/2, h=100, center=true);
+        cylinder(r=core_rad+slop, h=100, center=true);
         
         //gussy it up a little
         translate([0,wheel_rad+wall+axles_rad-wheel_rad-wall,0]) 
@@ -85,7 +141,7 @@ module motor_mount_arm(){
         }
         
         //cut out the spines on either side
-        for(i=[-1,1]) rotate([0,0,360/num_motors*.75-i*360/num_motors/2]){
+        #for(i=[-1,1]) rotate([0,0,360/num_motors*.75-i*360/num_motors/2]){
             spine(collar_extra=0);
             spine_connectors(solid=-1, collar_extra=slop/2);
         }
@@ -106,11 +162,14 @@ module spine_connectors(solid = 1, collar_extra = 0){
                 //screwhole
                 cylinder(r=m4_rad+collar_extra/2, h=spine_thick*3, center=true);
                 
-                //nut trap - vertical
+                //nut trap - out the back
                 translate([0,0,spine_thick*3/2])
                 hull(){
                     rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad, h=m4_nut_height, center=true, $fn=4);
-                    translate([-wall,0,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+.25, h=m4_nut_height+1, center=true, $fn=4);
+                    hull(){
+                        translate([0,0,m4_nut_height/2]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+.25, h=m4_nut_height+1, center=true, $fn=4);
+                        translate([0,0,wall]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+1, h=m4_nut_height+1, center=true, $fn=4);
+                    }
                 }
                 
                 //inset the screw a tiny bit
@@ -128,10 +187,12 @@ module spine_connectors(solid = 1, collar_extra = 0){
                     //screwhole
                     cylinder(r=m4_rad+collar_extra/2, h=spine_thick*3, center=true);
                     //nut trap - one up one down
-                    translate([0,0,spine_thick*3/2])
-                    hull(){
+                    translate([0,0,spine_thick*3/2]){
                         rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad, h=m4_nut_height, center=true, $fn=4);
-                        translate([-i*wall,0,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+.25, h=m4_nut_height+1, center=true, $fn=4);
+                        hull(){
+                            translate([-m4_square_nut_rad,0,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad, h=m4_nut_height, center=true, $fn=4);
+                            translate([-wall-m4_square_nut_rad,0,.5]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+.75, h=m4_nut_height+1, center=true, $fn=4);
+                        }
                     }
                     
                     //inset the screw a tiny bit
