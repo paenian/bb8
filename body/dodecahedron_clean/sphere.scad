@@ -26,15 +26,47 @@ dodecahedron_points = [
 
 $fn=120;
 
-translate([0,-5,0]) dodecahedron();
+//translate([0,-5,0]) dodecahedron();
 
-rotate([0,0,45]) translate([0,0,-170]) rotate([45,0,0]) scale([250,250,250]) dodecasphere();
+//rotate([0,0,45]) translate([0,0,-170]) rotate([45,0,0])
 
+scale([250,250,250]) dodecasphere();
+rotate([0,0,90]) scale([250,250,250]) dodecasphere();
+rotate([0,0,180]) scale([250,250,250]) dodecasphere();
+rotate([0,0,270]) scale([250,250,250]) dodecasphere();
+
+rotate([180,0,0]) {
+    scale([250,250,250]) dodecasphere();
+rotate([0,0,90]) scale([250,250,250]) dodecasphere();
+rotate([0,0,180]) scale([250,250,250]) dodecasphere();
+rotate([0,0,270]) scale([250,250,250]) dodecasphere();
+}
+
+rotate([0,0,45]) rotate([0,90,0]) rotate([45,0,0]) scale([250,250,250]) dodecasphere();
+rotate([0,0,45+90]) rotate([0,90,0]) rotate([45,0,0]) scale([250,250,250]) dodecasphere();
+rotate([0,0,45+180]) rotate([0,90,0]) rotate([45,0,0]) scale([250,250,250]) dodecasphere();
+rotate([0,0,45+270]) rotate([0,90,0]) rotate([45,0,0]) scale([250,250,250]) dodecasphere();
+
+rotate([0,0,45]) rotate([-54.73*(1/4),0,0]) cylinder(r=3, h=250);
+rotate([0,0,45]) rotate([-54.73*(3/4),0,0]) cylinder(r=3, h=250);
+
+rotate([0,0,-45]) rotate([-54.73*(1/4),0,0]) cylinder(r=3, h=250);
+rotate([0,0,-45]) rotate([-54.73*(3/4),0,0]) cylinder(r=3, h=250);
+
+rotate([0,0,180]) rotate([90,0,0]) {
+rotate([0,0,45]) rotate([-54.73*(1/4),0,0]) cylinder(r=3, h=250);
+rotate([0,0,45]) rotate([-54.73*(3/4),0,0]) cylinder(r=3, h=250);
+
+rotate([0,0,-45]) rotate([-54.73*(1/4),0,0]) cylinder(r=3, h=250);
+rotate([0,0,-45]) rotate([-54.73*(3/4),0,0]) cylinder(r=3, h=250);
+}
 
 %cube([300,600,.1], center=true);
 %cube([300,300,.2], center=true);
 
 module dodecahedron(face=0){
+//
+    
 polyhedron(
   points=dodecahedron_points, 
         /*[
