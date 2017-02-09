@@ -2,10 +2,51 @@ include <../configure.scad>
 include <arduino.scad>
 use <motor_mount.scad>
 
+part = 10;
+
+if(part == 0)
+    motor_mount_arm();
+if(part == 1)
+    spine();
+if(part == 2)
+    idler_mount_arm();
+if(part == 3)
+    idler_mount_arm();
+if(part == 4)
+    idler_lift_arm();
+
+if(part == 10)
+    assembled();
+
+
+//wheel variables
+wheel_rad = 60/2;
+wheel_width = 26;
+wheel_center_width = 13;
+wheel_inset = 6;//36 is the total length of wheel + adapter.  6 is measured, ish.
+
+//idler_variables
+idler_rad = 48/2;
+idler_thick = 20;
+idler_axle_rad = 10;
+
+//how low the hamster sits.
+hamster_drop = 120;
+
+//these should be calculated from the drop - have to make sure the wheels touch perfectly!
+hamster_lift = rad - wall - hamster_drop;
+echo(hamster_lift);
+body_rad_at_hamster = sqrt(hamster_lift * (2*rad - hamster_lift));
+echo(body_rad_at_hamster);
+axles_rad_calc = sqrt(pow((rad-wall-wheel_rad),2) - pow(hamster_drop,2));
+echo(axles_rad_calc);
+
+//old! axles_rad = 166.666; //radius of the axle mounting points - how far the wheels are from center.
+axles_rad = axles_rad_calc;
 core_rad = 120;
 
-axles_rad = 166.666; //radius of the axle mounting points - how far the wheels are from center.
-wheel_lift = 10+wall;  //distance center of axle is above 0.
+//idler is on the center line - so no fancy math.
+idler_axles_rad = rad - wall - idler_rad;
 
 //motor variables
 num_motors = 3; //could do a 3 wheel bot, too
@@ -24,13 +65,13 @@ motor_screw_rad = m3_rad;
 motor_screw_mount_rad = 31/2;
 motor_shaft_rad = 6/2;
 motor_shaft_len = 22; //measured frm the motor face
-motor_shaft_bump_rad = 16/2+slop;
+motor_shaft_bump_rad = 12/2+slop*2;
 motor_shaft_bump_len = 6.5;
 
 flanged_bearing_rad = 13/2+slop;
 
 motor_mount_arm_thick = motor_shaft_bump_len*2;
-motor_mount_arm_height = 25;
+motor_mount_arm_height = 30;    //was 26
 motor_shaft_d = 5.4 - motor_shaft_rad;
 
 //wheel adapter variables
@@ -39,10 +80,7 @@ wheel_adapter_shaft_len = 12;
 wheel_adapter_plate_rad = 28/2;
 wheel_adapter_plate_len = 4;
 
-//wheel variables
-wheel_rad = 60/2;
-wheel_width = 26;
-wheel_inset = 6;//36 is the total length of wheel + adapter.  6 is measured, ish.
+
 
 //the spines connect the motor arms
 spine_thick = 10;
@@ -51,16 +89,75 @@ spine_shorten_degrees = 20;
 spine_angle = 360 / num_motors - spine_shorten_degrees;    //degrees between spines - this is where the motors join them together.
 spine_inner_angle = 6;
 
+//the spine accessory slot is where everything hooks up - the upper ring for the head, the center panel for the electronics and battery, maybe even electronics mounts.
+spine_accessory_width = 5;
+spine_accessory_length = 10;
+spine_accessory_depth = spine_height/2; //so they start at the center.
+spine_num_accessory_slots = 3;
+
 
 $fn=64;
-motor();
-arm();
-!motor_mount_arm();
 
-spine();
-//spine_connectors(solid=-1, collar_extra=slop/2);
+module assembled(){
+    hamster();
+    
+    idler_lift_arms();
+    
+    %cube([200,200,rad], center=true);
+    
+    idler_ring();
+    
+    //head_mount();
+            
+    //sphere half, for sizeing
+    translate([0,0,0]) intersection(){
+        difference(){
+            sphere(r=rad);
+            sphere(r=rad-wall, $fn=180);
+        }
+        translate([300,0,0]) cube([600,600,600], center=true);
+    }
+}
 
-hamster();
+module idler_ring(){
+    //we've got three of the spine sections, and three idler mounts.
+    //idler arms
+    for(i=[0:360/num_motors:359]) rotate([0,0,i])
+        idler_mount_arm();
+    
+    //connecting spines
+    for(i=[0:360/num_motors:359]) rotate([0,0,i+360/num_motors/4])
+        mirror([0,0,1]) spine();
+}
+
+//this is the assembled wheel bit
+module hamster(){
+    difference(){
+        union(){
+            translate([0,0,-hamster_drop])
+            {
+                //motor arms
+                for(i=[0:360/num_motors:359]) rotate([0,0,i]) motor_mount_arm();
+                
+                //connecting spines
+                for(i=[0:360/num_motors:359]) rotate([0,0,i+360/num_motors/4])
+                    spine();
+                
+                //draw the wheels for good measure
+                for(i=[0:360/num_motors:359]) rotate([0,0,i+360/num_motors/4])
+                    translate([-axles_rad,0,0]) rotate([90,0,0]) 
+                    cylinder(r=wheel_rad, h=wheel_center_width, center=true);
+            
+                //rough the arduino in someplace
+                *rotate([0,0,30]) translate([120+10,-35,wall*2]) arduino();
+            
+                //batteries?
+                *translate([0,0,0]) battery();
+            }
+        }
+    }
+}
+
 
 //the motor :-)  The z plane is at the face of the motor.
 module motor(solid = 1, clearance = 0, screw_rad = motor_screw_rad){
@@ -88,11 +185,6 @@ module motor(solid = 1, clearance = 0, screw_rad = motor_screw_rad){
         }
     }
 }
-            
-//motor_wheel();
-!motor_mount_arm();
-//spine();
-//hamster();
 
 //draws the motor plus a wheel.
 //It's centered on the wheel - so the motor is offset and sticks out a bunch.
@@ -153,8 +245,30 @@ module arm(type="motor"){
             }
         }
         
-        //draw in the motor
-        translate([0,axles_rad,0]) rotate([0,-90,0]) rotate([0,0,-90]) motor(clearance = .5, solid = -1);
+        //cut out the motor
+        #translate([0,axles_rad,0]) rotate([0,-90,0]) rotate([0,0,-90-60]) motor(clearance = .5, solid = -1);
+    }
+}
+
+module idler_arm(){
+     difference(){
+        union(){
+            //body
+            hull(){
+                //the back
+                translate([0,core_rad,0]) cube([motor_mount_arm_thick,2,motor_mount_arm_height], center=true);
+                
+                //the idler plate
+                translate([0,idler_axles_rad,0]) 
+                intersection(){
+                    rotate([0,90,0]) cylinder(r=idler_rad/2, h=motor_mount_arm_thick, center=true);
+                    cube([motor_mount_arm_thick,50,motor_mount_arm_height], center=true);
+                }
+            }
+        }
+        
+        //cut out the idler hole - make this for a bearing.  It'll be two arms with bearings inset, then the idler.
+        #translate([0,axles_rad,0]) rotate([0,-90,0]) rotate([0,0,-90-60]) motor(clearance = .5, solid = -1);
     }
 }
 
@@ -169,8 +283,8 @@ module motor_mount_arm(){
     difference(){
         union(){
             //draw in the axle & wheel
-            %translate([0,axles_rad, 0]) rotate([0,90,0]) {
-                motor_wheel();
+            *translate([0,axles_rad, 0]) rotate([0,90,0]) {
+                rotate([0,0,60]) motor_wheel();
             }
             
             //there are two arms - the motor arm and the idler arm.
@@ -192,9 +306,6 @@ module motor_mount_arm(){
         //cut out the core
         cylinder(r=core_rad+slop, h=100, center=true);
         
-        //gussy it up a little
-        *translate([0,wheel_rad+wall+axles_rad-wheel_rad-wall,0]) 
-            scale([(motor_arm_width/2-motor_mount_arm_thick*2)/wheel_rad,1,1]) sphere(r=wheel_rad+wall);
         //todo: make the wheel cutout a toroid :-)
         //cut out the wheel
         translate([0,axles_rad, 0]){
@@ -202,10 +313,120 @@ module motor_mount_arm(){
         }
         
         //cut out the spines on either side
-        #for(i=[-1,1]) rotate([0,0,360/num_motors*.75-i*360/num_motors/2]){
+        for(i=[-1,1]) rotate([0,0,360/num_motors*.75-i*360/num_motors/2]){
             spine(collar_extra=0);
             spine_connectors(solid=-1, collar_extra=slop/2);
         }
+    }
+}
+
+module idler_mount_arm(){
+        arm_width = 20; //width of each arm
+    motor_arm_width = 48+motor_mount_arm_thick+5;
+    width = 30;
+    thick = motor_mount_arm_height;
+    
+    spine_attach_width = motor_arm_width+motor_mount_arm_thick+10;
+    
+    difference(){
+        union(){
+            //there are two arms - the motor arm and the idler arm.
+            translate([motor_arm_width/2,0,0]) idler_arm(type="motor");
+            mirror([1,0,0]) translate([motor_arm_width/2,0,0]) idler_arm(type="bearing");
+            
+            
+            //this connects the two
+            intersection(){
+                translate([0,core_rad,0]) cube([spine_attach_width,width*2,thick], center=true);
+                
+                cylinder(r=core_rad+spine_thick*2, h=thick, center=true);
+            }
+            
+            //chamfer the edges a bit
+            for(i=[0,1]) mirror([i,0,0]) translate([motor_arm_width/2-motor_mount_arm_thick/2,core_rad+spine_thick*1.75,0]) cylinder(r=wall, h=thick, center=true, $fn=4);
+        }
+        
+        //cut out the core
+        cylinder(r=core_rad+slop, h=100, center=true);
+        
+        //todo: make the wheel cutout a toroid :-)
+        //cut out the wheel
+        translate([0,axles_rad, 0]){
+            rotate([0,90,0]) cylinder(r=wheel_rad+wall, h=wheel_width+wall/2, center=true);
+        }
+        
+        //cut out the spines on either side
+        for(i=[-1,1]) rotate([0,0,360/num_motors*.75-i*360/num_motors/2]){
+            spine(collar_extra=0);
+            spine_connectors(solid=-1, collar_extra=slop/2);
+        }
+    }
+}
+
+module idler_lift_arms(){
+    translate([0,0,-hamster_drop]) 
+    for(i=[60:360/num_motors:359]) rotate([0,0,i]){
+        idler_lift_arm();
+    }
+}
+
+module accessory_end(solid=1){
+    if(solid == 1){
+        difference(){
+            cube([spine_accessory_length, spine_accessory_width, spine_accessory_depth], center=true);
+            rotate([90,0,0]) cylinder(r=m4_rad, h=20, center=true);
+        }
+    }else{
+        //the slot
+        cube([spine_accessory_length+slop*2, spine_accessory_width+slop*2, spine_accessory_depth+slop*2], center=true);
+            
+        //this lets you tighten down on the accessory, while keeping it centered
+        cube([spine_accessory_length*2, 1, spine_accessory_depth+4], center=true);
+            
+        //screwhole to mount the accessory
+        rotate([90,0,0]){
+            cylinder(r=m4_rad, h=20, center=true);
+            translate([0,0,-spine_thick/2-m4_nut_height/2+.5]) hull(){
+                rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+slop, h=m4_nut_height+.5, center=true, $fn=4);
+                translate([0,wall,-.5]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+slop*3, h=m4_nut_height+.5+1, center=true, $fn=4);
+            }
+            translate([0,0,spine_thick/2+m4_nut_height/2-.5]) cylinder(r=m4_cap_rad+slop*2, h=m4_nut_height, center=true);
+        }
+    }
+}
+
+module idler_ends(solid = 1){
+    translate([0,0,spine_accessory_depth/2]) accessory_end(solid = solid);
+    translate([0,0,hamster_drop-spine_accessory_depth/2]) mirror([0,0,1]) accessory_end(solid = solid);
+}
+
+//a vertical arm to lift up the idler ring.
+module idler_lift_arm(){
+    lift_arm_thick = spine_thick;
+    lift_arm_length = 25;
+    
+    num_holes = 4;
+    
+    difference(){
+        translate([0,core_rad+spine_thick/2,0])
+        union(){
+            //ends
+            #idler_ends();
+            
+            //body
+            //cube([spine_accessory_length, spine_accessory_width, spine_accessory_depth], center=true);
+            
+            translate([-lift_arm_length/2,-lift_arm_thick+spine_accessory_width/2,spine_accessory_depth-.01]) cube([lift_arm_length, lift_arm_thick, hamster_drop-spine_accessory_depth*2+.02]);
+        }
+        
+        //zip tie/screw slots for mounting things
+        translate([0,core_rad+spine_thick/2,0])
+        for(i=[0:num_holes-1]) translate([0,0,spine_accessory_depth + (i+.5)*((hamster_drop-spine_accessory_depth*2)/(num_holes))])
+            for(j=[0:1]) mirror([j,0,0])
+                translate([lift_arm_length/4,0,0]) rotate([90,0,0]) cylinder(r=m4_rad, h=30, center=true);
+        
+        //round the inside to make it a tiny bit interesting
+        cylinder(r=core_rad, h=rad*2, center=true);
     }
 }
 
@@ -226,10 +447,10 @@ module spine_connectors(solid = 1, collar_extra = 0){
                 //inside nut trap - out the top
                 translate([0,0,spine_thick/2+spine_thick/2])
                 hull(){
-                    rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad, h=m4_nut_height, center=true, $fn=4);
+                    rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad, h=m4_nut_height+slop, center=true, $fn=4);
                     hull(){
-                        translate([-m4_nut_height/2,0,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+.25, h=m4_nut_height+1, center=true, $fn=4);
-                        translate([-wall,0,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+1, h=m4_nut_height+1, center=true, $fn=4);
+                        translate([-m4_nut_height/2,0,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+.25, h=m4_nut_height+1+slop, center=true, $fn=4);
+                        translate([-wall-5,0,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+1, h=m4_nut_height+1+slop, center=true, $fn=4);
                     }
                 }
                 
@@ -249,10 +470,10 @@ module spine_connectors(solid = 1, collar_extra = 0){
                     cylinder(r=m4_rad+collar_extra/2, h=spine_thick*3, center=true);
                     //nut trap - one up one down
                     translate([0,0,spine_thick/2+spine_thick/2]){
-                        rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad, h=m4_nut_height, center=true, $fn=4);
+                        rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad, h=m4_nut_height+slop, center=true, $fn=4);
                         hull(){
-                            translate([-m4_square_nut_rad,0,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad, h=m4_nut_height, center=true, $fn=4);
-                            translate([-wall-m4_square_nut_rad,0,.5]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+.75, h=m4_nut_height+1, center=true, $fn=4);
+                            translate([-m4_square_nut_rad/2,0,0]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad, h=m4_nut_height+slop, center=true, $fn=4);
+                            translate([-wall-m4_square_nut_rad,0,.5]) rotate([0,0,360/8]) cylinder(r=m4_square_nut_rad+.75, h=m4_nut_height+1+slop, center=true, $fn=4);
                         }
                     }
                     
@@ -260,6 +481,20 @@ module spine_connectors(solid = 1, collar_extra = 0){
                     translate([0,0,-spine_thick/2]) cylinder(r=m4_cap_rad+slop+collar_extra/2, h=m4_cap_height+collar_extra, center=true);
                 }
             }
+        }
+    }
+    
+    //accessory slots in the spine
+    if(solid == -1){
+        for(i=[0:360/12:359]) rotate([0,0,i]) translate([0,core_rad+spine_thick/2,spine_height/2-spine_accessory_depth/2]) {
+            accessory_end(solid=-1);
+        }
+    }
+    
+    //some axial screwholes, what for mounting the head gizmos
+    if(solid == -1){
+        for(i=[0:360/12:359]) rotate([0,0,i+360/24]) translate([0,core_rad+spine_thick/2,0]) {
+            rotate([90,0,0]) cylinder(r=m4_rad+slop, h=50, center=true);
         }
     }
 }
@@ -293,36 +528,6 @@ module spine(collar_extra = 0){
     }
     
 
-}
-
-module hamster(){
-    
-    difference(){
-        union(){
-            //motor arms
-            for(i=[0:360/num_motors:359]) rotate([0,0,i]) motor_mount_arm();
-                
-            //connecting spines
-            for(i=[0:360/num_motors:359]) rotate([0,0,i+360/num_motors/4])
-                spine();
-            
-            //rough the arduino in someplace
-            %rotate([0,0,30]) translate([120+10,-35,wall*2]) arduino();
-            
-            //batteries?
-            translate([0,0,0]) battery();
-            
-            //sphere bottom, for sizeing
-            translate([0,0,0]) intersection(){
-                translate([0,0,130]) difference(){
-                    sphere(r=508/2);
-                    sphere(r=508/2-10, $fn=180);
-                }
-                translate([0,0,-300]) cube([600,600,600], center=true);
-            }
-        }
-        
-    }
 }
 
 module battery(){
