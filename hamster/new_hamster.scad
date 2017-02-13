@@ -2,7 +2,7 @@ include <../configure.scad>
 include <arduino.scad>
 use <motor_mount.scad>
 
-part = 10;
+part = 4;
 
 if(part == 0)
     motor_mount_arm();
@@ -11,9 +11,9 @@ if(part == 1)
 if(part == 2)
     idler_mount_arm();
 if(part == 3)
-    idler_mount_arm();
-if(part == 4)
     idler_lift_arm();
+if(part == 4)
+    motor_support_bearing();
 
 if(part == 10)
     assembled();
@@ -116,6 +116,50 @@ module assembled(){
             sphere(r=rad-wall, $fn=180);
         }
         translate([300,0,0]) cube([600,600,600], center=true);
+    }
+}
+
+module motor_support_bearing(){
+    bearing_id = 6/2;
+    bearing_od = 12/2;
+    bearing_thick = 4;
+    
+    length = 32.5;
+    base_thick = motor_mount_arm_thick/2;
+    
+    bump = .75;
+    slot = 2;
+    bump_len = 1;
+    
+    difference(){
+        union(){
+            //mount plate
+            translate([0,motor_shaft_offset,0]) cylinder(r=motor_rad, h=base_thick);
+            
+            //shaft
+            cylinder(r=bearing_od, h=length-2);
+            translate([0,0,length-2.05]) cylinder(r1=bearing_od, r2=bearing_id, h=2.05);
+            
+            //bearing clip
+            translate([0,0,length-.1]) {
+                cylinder(r=bearing_id, h=bearing_thick+.2);
+                
+                translate([0,0,bearing_thick-.1]) cylinder(r1=bearing_id, r2=bearing_id+bump, h=bump_len+.1);
+                translate([0,0,bearing_thick+bump_len-.1]) cylinder(r=bearing_id+bump, h=bump_len+.1);
+                translate([0,0,bearing_thick+bump_len*2-.1]) cylinder(r2=bearing_id, r1=bearing_id+bump, h=bump_len*2);
+            }
+        }
+        
+        //slot
+        rotate([0,0,120]) translate([0,0,length+6/2]) cube([bearing_od*2,slot,12], center=true);
+        
+        //screwholes
+        translate([0,motor_shaft_offset,0])
+        for(i=[0:360/motor_num_screws:359]) rotate([0,0,i]) translate([motor_screw_mount_rad,0,0])
+             cylinder(r=motor_screw_rad+slop, h=wall*3, center=true);
+        
+        //flatten the bottom
+        rotate([0,0,30]) translate([0,27.5,0]) cube([50,50,100], center=true);
     }
 }
 
@@ -250,7 +294,7 @@ module arm(type="motor"){
     }
 }
 
-module idler_arm(){
+module idler_arm(bump = 2){
      difference(){
         union(){
             //body
@@ -261,14 +305,62 @@ module idler_arm(){
                 //the idler plate
                 translate([0,idler_axles_rad,0]) 
                 intersection(){
-                    rotate([0,90,0]) cylinder(r=idler_rad/2, h=motor_mount_arm_thick, center=true);
+                    rotate([0,90,0]) cylinder(r=motor_mount_arm_height/2, h=motor_mount_arm_thick, center=true);
                     cube([motor_mount_arm_thick,50,motor_mount_arm_height], center=true);
                 }
             }
+            
+            //bearing bump
+            translate([0,idler_axles_rad,0]) rotate([0,90,0]) translate([0,0,-motor_mount_arm_thick/2-bump-slop]) cylinder(r2=m4_rad+wall/2, r1=m4_rad+1, h=bump+slop*2);
         }
         
-        //cut out the idler hole - make this for a bearing.  It'll be two arms with bearings inset, then the idler.
-        #translate([0,axles_rad,0]) rotate([0,-90,0]) rotate([0,0,-90-60]) motor(clearance = .5, solid = -1);
+        //cut out the idler hole - just an m4 axle.
+        translate([0,idler_axles_rad,0]) rotate([0,-90,0]) rotate([0,0,-90-60]) cylinder(r=m4_rad, h=25, center=true);
+    }
+}
+
+
+
+module idler_mount_arm(){
+        arm_width = 20; //width of each arm
+    bearing_bump = 2;
+    arm_sep = motor_mount_arm_thick+idler_thick+2+bearing_bump*2;
+    width = 30;
+    thick = motor_mount_arm_height;
+    
+    spine_attach_width = 65+motor_mount_arm_thick+10;
+    
+    difference(){
+        union(){
+            //there are two arms - the motor arm and the idler arm.
+            translate([arm_sep/2,0,0]) idler_arm(bump = bearing_bump);
+            mirror([1,0,0]) translate([arm_sep/2,0,0]) idler_arm(bump = bearing_bump);
+            
+            
+            //this connects the two
+            intersection(){
+                translate([0,core_rad,0]) cube([spine_attach_width,width*2,thick], center=true);
+                
+                cylinder(r=core_rad+spine_thick*2, h=thick, center=true);
+            }
+            
+            //chamfer the edges a bit
+            for(i=[0,1]) mirror([i,0,0]) translate([arm_sep/2-motor_mount_arm_thick/2,core_rad+spine_thick*1.75,0]) cylinder(r=wall, h=thick, center=true, $fn=4);
+        }
+        
+        //idler
+        %translate([0,idler_axles_rad,0]) rotate([0,90,0]) cylinder(r=idler_rad, h=idler_thick, center=true);
+        //axle
+        %translate([0,idler_axles_rad,0]) rotate([0,90,0]) cylinder(r=m4_rad, h=60, center=true);
+        
+        //cut out the core
+        cylinder(r=core_rad+slop, h=100, center=true);
+        
+        //cut out the spines on either side
+        for(i=[-1,1]) rotate([0,0,360/num_motors*.75-i*360/num_motors/2]){
+            spine(collar_extra=0);
+            spine_connectors(solid=-1, collar_extra=slop/2);
+        }
     }
 }
 
@@ -310,49 +402,6 @@ module motor_mount_arm(){
         //cut out the wheel
         translate([0,axles_rad, 0]){
             rotate([0,90,0]) cylinder(r=wheel_rad+wall/2, h=wheel_width+wall/2, center=true);
-        }
-        
-        //cut out the spines on either side
-        for(i=[-1,1]) rotate([0,0,360/num_motors*.75-i*360/num_motors/2]){
-            spine(collar_extra=0);
-            spine_connectors(solid=-1, collar_extra=slop/2);
-        }
-    }
-}
-
-module idler_mount_arm(){
-        arm_width = 20; //width of each arm
-    motor_arm_width = 48+motor_mount_arm_thick+5;
-    width = 30;
-    thick = motor_mount_arm_height;
-    
-    spine_attach_width = motor_arm_width+motor_mount_arm_thick+10;
-    
-    difference(){
-        union(){
-            //there are two arms - the motor arm and the idler arm.
-            translate([motor_arm_width/2,0,0]) idler_arm(type="motor");
-            mirror([1,0,0]) translate([motor_arm_width/2,0,0]) idler_arm(type="bearing");
-            
-            
-            //this connects the two
-            intersection(){
-                translate([0,core_rad,0]) cube([spine_attach_width,width*2,thick], center=true);
-                
-                cylinder(r=core_rad+spine_thick*2, h=thick, center=true);
-            }
-            
-            //chamfer the edges a bit
-            for(i=[0,1]) mirror([i,0,0]) translate([motor_arm_width/2-motor_mount_arm_thick/2,core_rad+spine_thick*1.75,0]) cylinder(r=wall, h=thick, center=true, $fn=4);
-        }
-        
-        //cut out the core
-        cylinder(r=core_rad+slop, h=100, center=true);
-        
-        //todo: make the wheel cutout a toroid :-)
-        //cut out the wheel
-        translate([0,axles_rad, 0]){
-            rotate([0,90,0]) cylinder(r=wheel_rad+wall, h=wheel_width+wall/2, center=true);
         }
         
         //cut out the spines on either side
