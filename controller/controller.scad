@@ -123,19 +123,20 @@ module bottom_right(){
 
 module connectors(solid = 1, height=10, end=0){
     for(i=[0,1]) mirror([i,0,0]){
-        for(j=[0,1]) mirror([0,j,0]) translate([keypad_width/2+m3_cap_rad+wall/2,keypad_width/2-wall*2,0]){
+        for(j=[0,1]) mirror([0,j,0]) translate([keypad_width/2+m3_cap_rad+wall/2,keypad_width/2-wall,0]){
             //screws around the keypad
             if(solid == 1){
-                cylinder(r=m3_rad+wall, h=bot_thick);
+                cylinder(r=m3_rad+wall/2, h=bot_thick);
             }else{
-                translate([0,0,-.1]) cylinder(r=m3_rad, h=height);
+                translate([0,0,-4.7]) cylinder(r=m3_rad, h=height);
                 if(end == 0){
                     //cone
                     translate([0,0,height-2]) cylinder(r1=m3_rad, r2=m3_rad+3, h=3);
+                    cylinder(r=m3_rad, h=height);
                 }
                 if(end == 1){
                     //nut
-                    translate([0,0,height-2.5]) cylinder(r1=m3_sq_nut_rad, r2=m3_sq_nut_rad+.5, h=3, $fn=4);
+                    translate([0,0,height-4.5]) cylinder(r1=m3_sq_nut_rad, r2=m3_sq_nut_rad+.5, h=5, $fn=4);
                 }
             }
         }
@@ -146,21 +147,22 @@ module connectors(solid = 1, height=10, end=0){
         if(solid == 1){
             cylinder(r=m3_rad+wall, h=bot_thick);
         }else{
-            translate([0,0,-.1]) cylinder(r=m3_rad, h=height);
+            translate([0,0,-4.7]) cylinder(r=m3_rad, h=height);
             if(end == 0){
                 //cone
                 translate([0,0,height-2]) cylinder(r1=m3_rad, r2=m3_rad+3, h=3);
+                cylinder(r=m3_rad, h=height);
             }
             if(end == 1){
                 //nut
-                translate([0,0,height-2.5]) cylinder(r1=m3_sq_nut_rad, r2=m3_sq_nut_rad+.5, h=3, $fn=4);
+                translate([0,0,height-4.5]) cylinder(r1=m3_sq_nut_rad, r2=m3_sq_nut_rad+.5, h=5, $fn=4);
             }
        }
     }
 }}
 
 module dogbone(rad = 30, sep = 60, thick = 6){
-    chamfer = 2.5;
+    chamfer = 3;
     for(i=[0,1]) mirror([i,0,0]) translate([sep/2,0,0]){
         cylinder(r=rad, h=thick-chamfer);
         translate([0,0,thick-chamfer-.1]) cylinder(r1=rad, r2=rad-chamfer, h=chamfer+.1);
@@ -168,8 +170,8 @@ module dogbone(rad = 30, sep = 60, thick = 6){
     
     //connect 'em up
     hull(){
-      translate([0,0,(thick-chamfer)/2]) cube([sep,rad,thick-chamfer],center=true);
-      translate([0,0,(thick-chamfer)/2]) cube([keypad_width+wall*2,keypad_width+wall*2,thick-chamfer],center=true);
+      #translate([0,0,(thick-chamfer*4.5)/2]) cube([sep,rad,thick-chamfer*4.5],center=true);
+      #translate([0,0,(thick-chamfer)/2]) cube([keypad_width+wall*2,keypad_width+wall*2,thick-chamfer],center=true);
         
       //translate([0,0,thick-chamfer]) cube([sep-chamfer*2,rad,chamfer],center=true);
       translate([0,0,thick-chamfer/2]) cube([keypad_width+wall*2,keypad_width+wall*2-chamfer*2,chamfer],center=true);  

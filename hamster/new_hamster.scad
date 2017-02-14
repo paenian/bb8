@@ -2,7 +2,7 @@ include <../configure.scad>
 include <arduino.scad>
 use <motor_mount.scad>
 
-part = 4;
+part = 5;
 
 if(part == 0)
     motor_mount_arm();
@@ -14,6 +14,8 @@ if(part == 3)
     idler_lift_arm();
 if(part == 4)
     motor_support_bearing();
+if(part == 5)
+    inside_hook();
 
 if(part == 10)
     assembled();
@@ -476,6 +478,41 @@ module idler_lift_arm(){
         
         //round the inside to make it a tiny bit interesting
         cylinder(r=core_rad, h=rad*2, center=true);
+    }
+}
+
+//this is a hook model for accessories to sit inside the ring.  It's meant to be used by the head
+//and the battery, not by itself.
+module inside_hook(length = 50, drop = spine_height+spine_accessory_width){
+    overhook_len = spine_thick-spine_accessory_width/2+spine_accessory_width;
+    chamfer = drop/2;
+    difference(){
+        union(){
+            //insert into the accessory slot
+            translate([0,-spine_accessory_width/2,spine_accessory_depth/2+spine_accessory_width-.1]) accessory_end(solid = 1);
+            
+            %translate([0,-spine_accessory_width/2,spine_height/2]) cube([20,spine_thick, spine_height], center=true);
+            
+            //drape over top of the spine
+            translate([0,-overhook_len/2,spine_accessory_width/2]) cube([spine_accessory_length, overhook_len,spine_accessory_width], center=true);
+            translate([0,-overhook_len+spine_accessory_width/2-.1,drop/2]) cube([spine_accessory_length,spine_accessory_width,drop], center=true);
+            
+            
+            //base of the arm
+            translate([0,-overhook_len-length/2+spine_accessory_width,-spine_accessory_width/2+drop]) cube([spine_accessory_length,length, spine_accessory_width], center=true);
+            
+            //chamfer for strength
+            translate([0,-overhook_len, -spine_accessory_width+drop]) intersection(){
+                rotate([0,90,0]) cylinder(r=chamfer, h=spine_accessory_length, $fn=4, center=true);
+                translate([-25,-49,-49]) cube([50,50,50]);
+            }
+        }
+        
+        //screwhole + cap
+        translate([0,0,spine_accessory_depth/2+spine_accessory_width]){
+            rotate([90,0,0]) cylinder(r=m4_rad+slop, h=50);
+            translate([0,-overhook_len+spine_accessory_width/2,0])  rotate([90,0,0]) cylinder(r=m4_cap_rad+slop, h=50);
+        }
     }
 }
 
