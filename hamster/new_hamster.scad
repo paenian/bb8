@@ -2,7 +2,7 @@ include <../configure.scad>
 include <arduino.scad>
 use <motor_mount.scad>
 
-part = 7;
+part = 5;
 
 if(part == 0)
     motor_mount_arm();
@@ -16,10 +16,6 @@ if(part == 4)
     motor_support_bearing();
 if(part == 5)
     inside_hook();
-if(part == 6)
-    battery_hook();
-if(part == 7)
-    head_hook();
 
 if(part == 10)
     assembled();
@@ -99,7 +95,7 @@ spine_inner_angle = 6;
 spine_accessory_width = 5;
 spine_accessory_length = 10;
 spine_accessory_depth = spine_height/2; //so they start at the center.
-spine_num_accessory_slots = 12;
+spine_num_accessory_slots = 3;
 
 
 $fn=64;
@@ -487,19 +483,15 @@ module idler_lift_arm(){
 
 //this is a hook model for accessories to sit inside the ring.  It's meant to be used by the head
 //and the battery, not by itself.
-module inside_hook(length = 50, drop = 0){
-    extra_drop = spine_height+spine_accessory_width;
-    drop = drop + extra_drop;
+module inside_hook(length = 50, drop = spine_height+spine_accessory_width){
     overhook_len = spine_thick-spine_accessory_width/2+spine_accessory_width;
-    chamfer = drop*.555;
-    translate([0,spine_thick/2+spine_accessory_width/2,drop])
-    mirror([0,0,1]) 
+    chamfer = drop/2;
     difference(){
         union(){
             //insert into the accessory slot
             translate([0,-spine_accessory_width/2,spine_accessory_depth/2+spine_accessory_width-.1]) accessory_end(solid = 1);
             
-            %translate([0,-spine_accessory_width/2,spine_height/2+spine_accessory_width]) cube([20,spine_thick, spine_height], center=true);
+            %translate([0,-spine_accessory_width/2,spine_height/2]) cube([20,spine_thick, spine_height], center=true);
             
             //drape over top of the spine
             translate([0,-overhook_len/2,spine_accessory_width/2]) cube([spine_accessory_length, overhook_len,spine_accessory_width], center=true);
@@ -524,63 +516,6 @@ module inside_hook(length = 50, drop = 0){
     }
 }
 
-//a place to mount the head - there's two of these, one on each side.
-module head_hook(){
-    battery_x = 30;
-    battery_y = 60;
-    wall = spine_accessory_width;
-    
-    tie_width = 15;
-    
-    %translate([0,0,0]) rotate([0,0,90]) spine();
-    difference(){
-        union(){
-            //hooks
-            rotate([0,0,360/spine_num_accessory_slots]) translate([0,core_rad,-spine_height/2]) inside_hook(drop = 0);
-            rotate([0,0,-360/spine_num_accessory_slots]) translate([0,core_rad,-spine_height/2]) inside_hook(drop = 0);
-            
-            //platform
-            translate([0,battery_y/2-tie_width,wall]) cube([battery_x+wall*3, tie_width*3+wall, wall*2], center=true);
-        }
-        
-        //battery indent
-        translate([0,0,wall*2]) cube([battery_x, battery_y, wall*2], center=true);
-        
-        //tie slots
-        for(i=[0,1]) mirror([i,0,0]) translate([battery_x/2+wall/2,battery_y/2-tie_width,0]) {
-            cube([wall/2,tie_width*1.2,25], center=true);
-        }
-    }
-}
-
-//a platform for the battery to rest on.  There's two of these, one on each side.
-module battery_hook(){
-    battery_x = 95;
-    battery_y = 152;
-    wall = spine_accessory_width;
-    
-    tie_width = 15;
-    
-    %translate([0,0,spine_height/2]) rotate([0,0,90]) spine();
-    difference(){
-        union(){
-            //hooks
-            rotate([0,0,360/spine_num_accessory_slots]) translate([0,core_rad,0]) inside_hook(drop = 10);
-            rotate([0,0,-360/spine_num_accessory_slots]) translate([0,core_rad,0]) inside_hook(drop = 10);
-            
-            //platform
-            translate([0,battery_y/2-tie_width,wall]) cube([battery_x+wall*3, tie_width*3+wall, wall*2], center=true);
-        }
-        
-        //battery indent
-        translate([0,0,wall*2]) cube([battery_x, battery_y, wall*2], center=true);
-        
-        //tie slots
-        for(i=[0,1]) mirror([i,0,0]) translate([battery_x/2+wall/2,battery_y/2-tie_width,0]) {
-            cube([wall/2,tie_width*1.2,25], center=true);
-        }
-    }
-}
 
 module spine_connectors(solid = 1, collar_extra = 0){
     collar_rad = spine_height/4+collar_extra;
@@ -638,14 +573,14 @@ module spine_connectors(solid = 1, collar_extra = 0){
     
     //accessory slots in the spine
     if(solid == -1){
-        for(i=[0:360/spine_num_accessory_slots:359]) rotate([0,0,i]) translate([0,core_rad+spine_thick/2,spine_height/2-spine_accessory_depth/2]) {
+        for(i=[0:360/12:359]) rotate([0,0,i]) translate([0,core_rad+spine_thick/2,spine_height/2-spine_accessory_depth/2]) {
             accessory_end(solid=-1);
         }
     }
     
     //some axial screwholes, what for mounting the head gizmos
     if(solid == -1){
-        for(i=[0:360/spine_num_accessory_slots:359]) rotate([0,0,i+360/24]) translate([0,core_rad+spine_thick/2,0]) {
+        for(i=[0:360/12:359]) rotate([0,0,i+360/24]) translate([0,core_rad+spine_thick/2,0]) {
             rotate([90,0,0]) cylinder(r=m4_rad+slop, h=50, center=true);
         }
     }
